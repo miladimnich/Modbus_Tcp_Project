@@ -1,0 +1,121 @@
+html, body {
+  height: 100%;
+  margin: 0;
+}
+
+/* This style will center everything inside #root */
+#root {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start; /* Align content at the top */
+  align-items: center; /* Center content horizontally */
+  height: 100vh; /* Full viewport height */
+  width: 100%; /* Full width */
+  padding: 20px; /* Add padding to root */
+  box-sizing: border-box; /* Include padding and border in the element's total width and height */
+}
+
+/* Styling for the title */
+.title {
+  margin-top: 0; /* Remove any default margin */
+  font-size: 2rem; /* Adjust title size */
+  text-align: center; /* Ensure title text is centered */
+}
+
+/* Center the select dropdown and align it properly */
+select {
+  margin-top: 20px; /* Add margin between title and select dropdown */
+  padding: 10px;
+  font-size: 1rem;
+  width: 200px; /* Control width of the select box */
+}
+
+/* Ensures that buttons are displayed inline with no wrapping */
+.button-container {
+  display: flex;
+  gap: 10px; /* Adds space between buttons */
+  justify-content: flex-start; /* Aligns buttons to the start of the container */
+  align-items: center; /* Vertically centers buttons */
+  margin-top: 20px;  /* Adds spacing above buttons */
+}
+
+button {
+  padding: 10px 20px; /* Adds padding for buttons */
+  font-size: 16px; /* Controls the font size */
+  cursor: pointer; /* Makes button look clickable */
+}
+button.start {
+  background-color: #28a745; /* Green color */
+  color: white; /* White text */
+}
+button.stop {
+  background-color: #dc3545; /* Red color */
+  color: white; /* White text */
+}
+
+/* Table styles */
+.table {
+  width: 100%; /* Set width of the table to 100% */
+  max-width: 900px; /* Limit the maximum width of the table */
+  margin-bottom: 20px; /* Add space between tables */
+  border-collapse: collapse; /* Ensure borders are collapsed into a single line */
+  table-layout: fixed; /* Make all columns have equal width */
+}
+
+/* Style for table headers and data cells */
+th, td {
+  padding: 12px;
+  border: 1px solid #ddd; /* Light border around the cells */
+  word-wrap: break-word; /* Ensure long words break and do not overflow */
+  text-align: center; /* Center-align content for better readability */
+}
+
+/* Define column widths to ensure consistency */
+th:nth-child(1), td:nth-child(1) {
+  width: 25%; /* Adjusted to allow better width distribution */
+}
+
+th:nth-child(2), td:nth-child(2) {
+  width: 15%; /* Second column width */
+}
+
+th:nth-child(3), td:nth-child(3) {
+  width: 15%; /* Third column width */
+}
+
+th:nth-child(4), td:nth-child(4) {
+  width: 15%; /* Fourth column width */
+}
+
+th:nth-child(5), td:nth-child(5) {
+  width: 30%; /* Adjust the "Difference" column to occupy more space */
+}
+
+th {
+  text-align: left; /* Align header text to the left */
+  background-color: #f4f4f4; /* Light gray background for header */
+}
+
+td {
+  text-align: left; /* Align data cells to the left by default */
+}
+
+/* Optional: Center any other content like labels */
+label {
+  margin-top: 10px;
+  font-size: 1rem;
+}
+
+/* Clock Styling */
+.current-time {
+  margin-top: 20px;
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: #333; /* Dark text color for better readability */
+  padding: 10px;
+  background-color: #f0f8ff; /* Light blue background for the clock */
+  border-radius: 8px; /* Rounded corners for the clock */
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Light shadow for the clock */
+  display: inline-block; /* Makes sure the clock has its own space */
+  text-align: center; /* Center the time */
+}
