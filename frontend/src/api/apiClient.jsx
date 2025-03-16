@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const apiClient = axios.create({
-    baseURL: "http://localhost:8080",  // Backend API base URL
+    baseURL: "http://localhost:8080/api",  // Backend API base URL
 });
 
 // Fetch devices from the backend
