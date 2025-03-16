@@ -11,7 +11,7 @@ const useWebSocket = (deviceId) => {
     if (!deviceId) return;
 
     // Create a new WebSocket connection
-    const newSocket = new WebSocket(`ws://localhost:8080/ws/energyData`);
+    const newSocket = new WebSocket(`ws://localhost:8080/ws/data`);
 
     newSocket.onopen = () => {
       console.log(`WebSocket connection established for device ${deviceId}`);
