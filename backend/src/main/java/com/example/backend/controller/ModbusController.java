@@ -2,9 +2,13 @@ package com.example.backend.controller;
 
 import com.example.backend.config.ModbusPollingService;
 import com.example.backend.models.Device;
+import com.example.backend.models.TestStation;
 import com.example.backend.service.DeviceService;
 import com.example.backend.service.EnergyService;
 import com.example.backend.service.HeatingService;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -20,7 +24,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 
   @RestController
-  @RequestMapping("/devices")
+  @RequestMapping("/api")
   public class ModbusController {
 
     private final DeviceService deviceService;
@@ -40,19 +44,20 @@ import org.springframework.web.bind.annotation.RestController;
 
     }
 
-    @GetMapping()
-    public ResponseEntity<List<Device>> getDevices() {
-      List<Device> devices = deviceService.getAllDevices();
-      return ResponseEntity.ok(devices);
+    @GetMapping("/devices")
+    public ResponseEntity<List<TestStation>> getDevices() {
+    //  List<Device> devices = deviceService.getAllDevices();
+      List<TestStation> stations = deviceService.getAllTestStations();
+      return ResponseEntity.ok(stations);
     }
 
-    @PostMapping("/{deviceId}")
+    @PostMapping("devices/{deviceId}")
     public ResponseEntity<String> getCurrentValue(@PathVariable int deviceId) {
       modbusPollingService.startPolling(deviceId);
       return ResponseEntity.ok("Started pushing energy data for device " + deviceId);
     }
 
-    @PostMapping("/{deviceId}/startMeasure")
+    @PostMapping("devices/{deviceId}/startMeasure")
     public ResponseEntity<Map<String, Long>> startTask(@PathVariable int deviceId) {
       if (modbusPollingService.isRunning) {
         Map<String, Long> firstEnergyResults = energyService.startResults(deviceId);
@@ -70,7 +75,7 @@ import org.springframework.web.bind.annotation.RestController;
       }
     }
 
-    @PostMapping("/{deviceId}/stopMeasure")
+    @PostMapping("devices/{deviceId}/stopMeasure")
     public ResponseEntity<Map<String, Long>> stopTask(@PathVariable int deviceId) {
       modbusPollingService.stopPolling();
       Map<String, Long> lastEnergyResults = energyService.lastResults(deviceId);
@@ -81,4 +86,6 @@ import org.springframework.web.bind.annotation.RestController;
       combinedResults.putAll(lastHeatingResults); // Add heating results
       return ResponseEntity.ok(combinedResults);
     }
+
+
   }
