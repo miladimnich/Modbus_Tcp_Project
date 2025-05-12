@@ -1,11 +1,14 @@
 package com.example.backend.service;
 
-import com.example.backend.models.Device;
+import com.example.backend.models.ModbusDevice;
+import com.example.backend.models.TestStation;
 import com.serotonin.modbus4j.ModbusFactory;
 import com.serotonin.modbus4j.ModbusMaster;
 import com.serotonin.modbus4j.ip.IpParameters;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,8 +18,9 @@ import org.springframework.stereotype.Service;
 public class ModbusClientService {
 
   private final DeviceService deviceService;
-  private final Map<Integer, ModbusMaster> modbusMasters = new ConcurrentHashMap<>();  // Map deviceId to ModbusMaster
+  private final Map<Integer, List<ModbusMaster>> modbusMasters = new ConcurrentHashMap<>();
   private final ModbusFactory modbusFactory = new ModbusFactory();
+  private final Map<Integer, List<IpParameters>> modbusIps = new ConcurrentHashMap<>();
 
   @Autowired
   public ModbusClientService(DeviceService deviceService) {
@@ -29,26 +33,41 @@ public class ModbusClientService {
     setupModbusMasters();
   }
 
+
   private void setupModbusMasters() {
-    for (Device device : deviceService.getAllDevices()) {
-      createModbusMaster(device);
+    for (TestStation testStation : deviceService.getAllTestStations()) {
+      createModbusMaster(testStation);
     }
   }
 
-  private void createModbusMaster(Device device) {
-    try {
-      IpParameters params = new IpParameters();
-      params.setHost(device.getIpAddress());
-      params.setPort(device.getPort());
-      params.setEncapsulated(false);
 
-      ModbusMaster modbusMaster = modbusFactory.createTcpMaster(params, true);
-      // Set timeout and retries
-      modbusMaster.setTimeout(5000); // Set timeout to 5000 milliseconds (5 seconds)
-      modbusMaster.setRetries(3);    // Set retries to 3
-     // modbusMaster.init();
-      // Store ModbusMaster in map using deviceId
-      modbusMasters.put(device.getId(), modbusMaster);
+  private void createModbusMaster(TestStation testStation) {
+    try {
+      List<ModbusMaster> modbusMastersList = new ArrayList<>();
+      List<IpParameters> ipParametersList = new ArrayList<>();
+
+      for (ModbusDevice device : testStation.getModbusdevices()) {
+        String ipAddress = device.getIpAddress();
+        int port = device.getPort();
+
+        IpParameters params = new IpParameters();
+        params.setHost(ipAddress);
+        params.setPort(port);
+        params.setEncapsulated(false);
+
+        ModbusMaster modbusMaster = modbusFactory.createTcpMaster(params, true);
+
+        modbusMaster.setTimeout(5000); // Set timeout to 5000 milliseconds (5 seconds)
+        modbusMaster.setRetries(3);    // Set retries to 3
+    //  modbusMaster.init();
+        System.out.println("ModbusMaster initialized for device: " + testStation.getId() + ":" + ipAddress + ":" + port);
+
+
+        modbusMastersList.add(modbusMaster);
+        ipParametersList.add(params);
+      }
+      modbusMasters.put(testStation.getId(), modbusMastersList);
+      modbusIps.put(testStation.getId(), ipParametersList);
 
     } catch (Exception e) {
       e.printStackTrace();
@@ -56,24 +75,40 @@ public class ModbusClientService {
     }
   }
 
-  public ModbusMaster getModbusMasterbyId(int deviceId) {
-    return modbusMasters.get(deviceId);
+  public List<ModbusMaster> getModbusMasterbyId(int testStationId) {
+    return modbusMasters.get(testStationId);
   }
-
   public synchronized void updateDevice() {
     shutdown(); // close existing connection
     modbusMasters.clear(); // clear the map
     setupModbusMasters();// reinitialize with updated devices
+  }
 
+  public String getIpAddressFromModbusMaster(ModbusMaster modbusMaster, TestStation testStation) {
+    // Get the list of IpParameters for the given TestStation ID
+    List<IpParameters> ipParametersList = modbusIps.get(testStation.getId());
+
+    // Check if the ModbusMaster corresponds to an IP in the list
+    for (int i = 0; i < ipParametersList.size(); i++) {
+      IpParameters ipParams = ipParametersList.get(i);
+      if (modbusMaster.equals(modbusMasters.get(testStation.getId()).get(i))) {
+        // Return the IP address stored in IpParameters
+        return ipParams.getHost();
+      }
+    }
+
+    return null; // Return null if no matching ModbusMaster is found
   }
 
   @PreDestroy
   private void shutdown() {
-    for(ModbusMaster master: modbusMasters.values()){
-      try {
-        master.destroy();
-      }catch (Exception e){
-        e.printStackTrace();
+    for (List<ModbusMaster> masters : modbusMasters.values()) {
+      for (ModbusMaster master : masters) {
+        try {
+          master.destroy();
+        } catch (Exception e) {
+          e.printStackTrace();
+        }
       }
     }
   }

@@ -1,0 +1,29 @@
+package com.example.backend.enums;
+
+import com.example.backend.models.SubDevice;
+
+public enum GasCalculationType {
+  GAS_TEMPERATURE(0),
+  GAS_METER(24),
+  GAS_PRESSURE(32),
+  ENVIRONMENT_TEMPERATURE(-1),  // Special case, will be handled separately
+  ENVIRONMENT_PRESSURE(-1);
+
+
+  private final int offset;
+
+  GasCalculationType(int offset) {
+    this.offset = offset;
+  }
+
+  public int getStartAddress(SubDevice subDevice) {
+    int baseAddress = subDevice.getStartAddress();
+    if (this == ENVIRONMENT_TEMPERATURE) {
+      return 7; // Fixed start address for ENVIRONMENT_TEMPERATURE
+    } else if (this == ENVIRONMENT_PRESSURE) {
+      return 39;
+    } else {
+      return baseAddress + offset;
+    }
+  }
+}

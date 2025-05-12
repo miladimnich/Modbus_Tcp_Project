@@ -13,8 +13,7 @@ public class WebSocketConfig  implements WebSocketConfigurer {
   private WebSocketHandlerCustom webSocketHandler;
   @Override
   public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
-    registry.addHandler(webSocketHandler, "/ws/data")  // WebSocket endpoint
+    registry.addHandler(webSocketHandler, "/ws/measure")  // WebSocket endpoint
         .setAllowedOrigins("*");
   }
-
 }

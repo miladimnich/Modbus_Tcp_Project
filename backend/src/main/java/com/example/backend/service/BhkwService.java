@@ -1,11 +1,8 @@
 package com.example.backend.service;
 
-
-import com.example.backend.config.ModbusLock;
 import com.example.backend.config.WebSocketHandlerCustom;
-import com.example.backend.enums.HeatingCalculationType;
+import com.example.backend.enums.BhkwCalculationType;
 import com.example.backend.enums.SubDeviceType;
-
 import com.example.backend.exception.ModbusDeviceException;
 import com.example.backend.models.ModbusDevice;
 import com.example.backend.models.SubDevice;
@@ -17,113 +14,121 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.locks.ReentrantLock;
 import lombok.Getter;
 import org.springframework.stereotype.Service;
 
 @Service
-public class HeatingService {
-
+public class BhkwService {
   @Getter
-  private final Map<String, Long> firstHeatingResults = new ConcurrentHashMap<>();
+  private final Map<String, Long> firstResults = new ConcurrentHashMap<>();
   @Getter
-  private final Map<String, Long> currentHeatingResults = new ConcurrentHashMap<>();
+  private final Map<String, Long> currentResults = new ConcurrentHashMap<>();
   @Getter
-  private final Map<String, Long> lastHeatingResults = new ConcurrentHashMap<>();
-
+  private final Map<String, Long> lastResults = new ConcurrentHashMap<>();
+  private final ModbusBitwiseService modbusBitwiseService;
+  private final DeviceService deviceService;
   private final WebSocketHandlerCustom webSocketHandlerCustom;
 
 
-  private final ModbusBitwiseService modbusBitwiseService;
-  private final DeviceService deviceService;
-
-  public HeatingService(WebSocketHandlerCustom webSocketHandlerCustom,
-      ModbusBitwiseService modbusBitwiseService, DeviceService deviceService) {
+  public BhkwService(DeviceService deviceService, WebSocketHandlerCustom webSocketHandlerCustom, ModbusBitwiseService modbusBitwiseService) {
+    this.deviceService = deviceService;
     this.webSocketHandlerCustom = webSocketHandlerCustom;
     this.modbusBitwiseService = modbusBitwiseService;
-    this.deviceService = deviceService;
+
   }
 
-  public void processHeatingData(int deviceId) throws InterruptedException {
+
+  public void processDataBhkw(int deviceId) throws InterruptedException {
     TestStation testStation = deviceService.getTestStationById(deviceId);
     for (ModbusDevice modbusDevice : testStation.getModbusdevices()) {
-      List<SubDevice> heatingSubDevices = modbusDevice.getSubDevices();
-      for (SubDevice subDevice : heatingSubDevices) {
-        if (subDevice.getType().equals(SubDeviceType.HEATING)) {
-          List<HeatingCalculationType> heatingCalculationTypes = subDevice.getHeatingCalculationTypes();
 
+
+      List<SubDevice> bhkwSubDevices = modbusDevice.getSubDevices();
+      for (SubDevice subDevice : bhkwSubDevices) {
+        if (subDevice.getType().equals(SubDeviceType.BHKW)) {
+          List<BhkwCalculationType> bhkwCalculationTypes = subDevice.getBhkwCalculationTypes();
           long totalStartTime = System.currentTimeMillis();
-          for (HeatingCalculationType heatingCalculationType : heatingCalculationTypes) {
-            int startAddress = heatingCalculationType.getStartAddress(subDevice);
+          for (BhkwCalculationType bhkwCalculationType : bhkwCalculationTypes) {
+            // Check for interruption before each calculation
+            if (Thread.currentThread().isInterrupted()) {
+              System.out.println("Thread interrupted while processing for device " + deviceId);
+              return;  // Return early if the thread is interrupted
+            }
+
+            int startAddress = bhkwCalculationType.getStartAddress(subDevice);
 
             try {
-
               long result;
-              switch (heatingCalculationType) {
-                case ERZEUGTE_ENERGIE_HEATING, VORLAUFTEMPERATUR, VOLUMENSTROM, TEMPERATURDIFFERENZ,
-                     LEISTUNG, GESAMT_VOLUMEN, RuCKLAUFTEMPERATUR:
+              switch (bhkwCalculationType) {
 
+                case EXHAUST_GAS_TEMPERATURE, HEATING_WATER_FLOW, HEATING_WATER_RETURN,
+                     ENGINE_COOLANT_RETURN, ENGINE_COOLANT_FLOW,
+                     CONTROLLER, BOX, GENERATOR_WINDING,
+                     ENGINE_OIL:
                   result = modbusBitwiseService.bitwiseShiftCalculation(deviceId, startAddress, modbusDevice, subDevice.getType());
-                  System.out.println("Calculated Value: " + heatingCalculationType.name() + " = " + result);
-                  processAndPush(deviceId, heatingCalculationType.name(), result);
+                  System.out.println("Calculated Value: " + bhkwCalculationType.name() + " = " + result);
+
+                  processAndPush(deviceId, bhkwCalculationType.name(), result);
                   break;
+
+
                 default:
-                  System.out.println("Unhandled heatingCalculationType: " + heatingCalculationType);
+                  System.out.println("Unhandled EnergyCalculationType: " + bhkwCalculationType);
                   return;
               }
             } catch (ModbusDeviceException ex) {
-              String errorMessage = "ModbusDeviceException error during Modbus calculation for device " + deviceId + " (" + heatingCalculationType.name() + "): " + ex.getMessage();
+              String errorMessage = "ModbusDeviceException error during Modbus calculation for device " + deviceId + " (" + bhkwCalculationType.name() + "): " + ex.getMessage();
               System.err.println(errorMessage);
               Thread.currentThread().interrupt();
+              return;
             } catch (WaitingRoomException e) {
               System.err.println("WaitingRoomException while processing gas data for device " + deviceId + ": " + e.getMessage());
               Thread.currentThread().interrupt();
+              return;
             } catch (TimeoutException e) {
               System.err.println("TimeoutException while processing gas data for device " + deviceId + ": " + e.getMessage());
               Thread.currentThread().interrupt();
+              return;
             } catch (IllegalStateException ex) {
-              String errorMessage = "Error during Modbus calculation for device " + deviceId + " (" + heatingCalculationType.name() + "): " + ex.getMessage();
+              String errorMessage = "Error during Modbus calculation for device " + deviceId + " (" + bhkwCalculationType.name() + "): " + ex.getMessage();
               System.err.println(errorMessage);
               Thread.currentThread().interrupt();
+              return;
             } catch (ModbusTransportException e) {
-              String errorMessage = "ModbusTransportException  " + deviceId + " (" + heatingCalculationType.name() + "): " + e.getMessage();
+              String errorMessage = "ModbusTransportException  " + deviceId + " (" + bhkwCalculationType.name() + "): " + e.getMessage();
               System.err.println(errorMessage);
               Thread.currentThread().interrupt();
-
+              return;
             } catch (Exception ex) {
-              String errorMessage = "Unexpected error during Modbus calculation for device " + deviceId + " (" + heatingCalculationType.name() + "): " + ex.getMessage();
+              String errorMessage = "Unexpected error during Modbus calculation for device " + deviceId + " (" + bhkwCalculationType.name() + "): " + ex.getMessage();
               System.err.println(errorMessage);
               Thread.currentThread().interrupt();
+              return;
             }
-
           }
           long totalEndTime = System.currentTimeMillis();  // End timing after loop
-          System.out.println("Total time to implement all switch tasks for Heating: " + (totalEndTime - totalStartTime) + " ms");
-
+          System.out.println("Total time to implement all switch tasks for Bhkw: " + (totalEndTime - totalStartTime) + " ms");
         }
       }
-
     }
   }
-
 
   public void processAndPush(int deviceId, String key, long value) {
     System.out.println("Processing value: Key = " + key + ", Value = " + value + ", DeviceId = " + deviceId);
 
-    boolean valueChanged = !lastHeatingResults.containsKey(key);
+    boolean valueChanged = !lastResults.containsKey(key);
 
-    currentHeatingResults.put(key, value);
-    lastHeatingResults.putIfAbsent(key, value);
+    currentResults.put(key, value);
+    lastResults.putIfAbsent(key, value);
 
-    if (!currentHeatingResults.get(key).equals(lastHeatingResults.get(key))) {
-      lastHeatingResults.put(key, value);
+    if (!currentResults.get(key).equals(lastResults.get(key))) {
+      lastResults.put(key, value);
       valueChanged = true;
     }
 
     if (valueChanged) {
       Map<String, Object> update = new LinkedHashMap<>();
-      update.put(key, currentHeatingResults.get(key));
+      update.put(key, currentResults.get(key));
       update.put("deviceId", deviceId);
 
       if (!webSocketHandlerCustom.getConnectedSessions().isEmpty()) {
@@ -137,23 +142,21 @@ public class HeatingService {
         System.out.println("WebSocket session is no longer available. Skipping WebSocket push.");
       }
 
-
     } else {
       System.out.println("Value did not change, skipping push: " + key);
     }
 
   }
 
+
   public Map<String, Long> startResults(int deviceId) {
-    firstHeatingResults.putAll(currentHeatingResults);
-    return firstHeatingResults;
+    firstResults.putAll(currentResults);
+    return firstResults;
   }
 
   public Map<String, Long> lastResults(int deviceId) {
-    return lastHeatingResults;
+    return lastResults;
   }
+
+
 }
-
-
-
-
