@@ -1,121 +1,609 @@
-html, body {
-  height: 100%;
-  margin: 0;
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@700;900&family=Poppins:wght@700;900&display=swap');
+
+
+
+/* Toast container position */
+.Toastify__toast-container {
+  top: 10px;
+  /* Adjust top margin */
+  right: 10px;
+  /* Align to the right */
+  left: auto;
+  /* Prevent left alignment */
+  bottom: auto;
+  z-index: 9999;
+  /* Ensure toast appears on top of other elements */
+  padding: 10px;
 }
 
-/* This style will center everything inside #root */
-#root {
+/* Base toast styling */
+.Toastify__toast {
+  font-size: 20px;
+  font-weight: 600;
+  /* Slightly lighter than bold for better readability */
+  border-radius: 8px;
+  padding: 12px 20px;
+  /* Add some horizontal padding */
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  max-width: 400px;
+  /* Prevent the toast from being too wide */
+  text-align: left;
+  /* Left-align text inside the toast */
+  color: white;
+}
+
+/* Success notification */
+.Toastify__toast--success {
+  background-color: #28a745 !important;
+  /* Green */
+  color: white;
+  border: 1px solid #218838;
+  /* Slightly darker border for contrast */
+}
+
+/* Error notification */
+.Toastify__toast.Toastify__toast--error {
+  background-color: #dc3545 !important;
+  /* Red */
+  color: white !important;
+  /* Ensure white text */
+  border: 1px solid #c82333;
+}
+
+/* Customize the close button style */
+.Toastify__toast .Toastify__close-button {
+  color: white !important;
+  font-size: 20px;
+  /* Make the close button larger */
+  cursor: pointer;
+  padding: 5px 10px;
+  margin-left: 15px;
+  /* Space between text and close button */
+}
+
+/* Add hover effect for close button */
+.Toastify__toast .Toastify__close-button:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+  /* Light background when hovering */
+  border-radius: 50%;
+}
+
+
+
+/* Ensure all tables share the same styling */
+.table {
+  width: 100%;
+  background: white;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+  padding: 10px;
+}
+
+/* FLEXBOX FOR TABLES */
+.tables-container {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  /* Two columns */
+  grid-template-rows: auto auto;
+  /* Two rows */
+  gap: 15px;
+  max-width: 900px;
+  width: 100%;
+  justify-content: center;
+}
+
+/* Table Headers */
+.device-table th {
+  position: sticky;
+  top: 0;
+  background: linear-gradient(to right, #555, #777);
+  /* Gradient header */
+  color: white;
+  padding: 5px;
+  text-align: center;
+  font-weight: bold;
+  border-bottom: 3px solid #444;
+  /* Strong separator */
+  font-size: 12px;
+}
+
+
+/* Table Cells */
+.device-table td {
+  padding: 5px;
+  text-align: center;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  /* Subtle borders */
+  box-sizing: border-box;
+  font-size: 12px;
+  color: #555;
+  transition: all 0.3s ease;
+  /* Smooth transitions */
+}
+
+/* Hover Effect */
+.device-table tr:hover {
+  background-color: #c0d6df;
+  /* Slightly darker on hover */
+  cursor: pointer;
+}
+
+/* First Column Styling */
+.device-table td:first-child {
+  font-weight: bold;
+  color: #333;
+}
+
+
+/* Flex container for the tables */
+.container {
+  display: flex;
+  flex-wrap: wrap;
+  /* Allow content to wrap */
+  justify-content: space-between;
+  gap: 5px;
+  /* Add a little gap between tables */
+  box-sizing: border-box;
+  /* Ensure container sizing includes padding and borders */
+}
+
+/* Table Styling for Energy, Gas, and Heating */
+.table-energy,
+.table-gas,
+.table-heating,
+.bhkw-table {
+  width: 48%;
+  /* Ensures all tables take up equal width */
+
+}
+
+/* Ensure all columns are equal in width, including first column */
+.device-table .table th,
+.device-table .table td {
+  padding: 5px 5px;
+  /* Adjust the left and right padding (8px top/bottom, 16px left/right) */
+
+
+  text-align: center;
+  border: 1px solid #771717;
+  /* Ensures borders are applied */
+  box-sizing: border-box;
+  width: 20%;
+  /* Set fixed width for columns */
+  font-size: 15px;
+  /* Smaller text size */
+
+}
+
+
+
+.device-table {
+  width: 100%;
+  padding: 25px;
+  /* Add padding inside the container */
+  table-layout: fixed;
+  word-wrap: break-word;
+  /* Ensure text wraps if it's too long */
+
+
+}
+
+/* Optional: You can adjust the width further if needed */
+.device-table th:nth-child(1),
+.device-table td:nth-child(1) {
+  width: 18%;
+  /* Adjust first column width */
+  word-wrap: break-word;
+  /* Ensure text wraps if it's too long */
+
+}
+
+/* Optional: You can make specific columns wider if needed */
+.device-table th:nth-child(2),
+.device-table td:nth-child(2) {
+  width: 14%;
+  /* Second column width */
+  word-wrap: break-word;
+  /* Ensure text wraps if it's too long */
+
+}
+
+.device-table th:nth-child(3),
+.device-table td:nth-child(3) {
+  width: 14%;
+  /* Third column width */
+  word-wrap: break-word;
+  /* Ensure text wraps if it's too long */
+
+}
+
+.device-table th:nth-child(4),
+.device-table td:nth-child(4) {
+  width: 14%;
+  /* Fourth column width */
+  word-wrap: break-word;
+  /* Ensure text wraps if it's too long */
+
+}
+
+.device-table th:nth-child(5),
+.device-table td:nth-child(5) {
+  width: 14%;
+  /* Fifth column width */
+  word-wrap: break-word;
+  /* Ensure text wraps if it's too long */
+
+}
+
+.device-table th:nth-child(6),
+.device-table td:nth-child(6) {
+  width: 14%;
+  /* Sixth column width */
+  word-wrap: break-word;
+  /* Ensure text wraps if it's too long */
+
+}
+
+.device-table th:nth-child(7),
+.device-table td:nth-child(7) {
+  width: 14%;
+  /* Seventh column width */
+  word-wrap: break-word;
+  /* Ensure text wraps if it's too long */
+
+}
+
+/* Adjust last column */
+.device-table th:nth-child(8),
+.device-table td:nth-child(8) {
+  width: 14%;
+  /* Eighth column width */
+  word-wrap: break-word;
+  /* Ensure text wraps if it's too long */
+
+}
+
+.device-table th:nth-child(9),
+.device-table td:nth-child(9) {
+  width: 14%;
+  /* Ninth column width */
+  word-wrap: break-word;
+  /* Ensure text wraps if it's too long */
+
+}
+
+
+
+/* Adjust the height of table rows */
+.device-table .table tr {
+  height: 30px;
+  /* Set a fixed height for rows */
+}
+
+
+/* Container for the table (if needed) to ensure there's space around it */
+.device-table {
+  padding: 25px;
+  /* Add padding inside the container */
+  margin: 0px;
+  /* Center and reduce spacing */
+  border-radius: 8px;
+  /* Smooth edges */
+  overflow: hidden;
+  /* Ensures rounded corners apply properly */
+
+}
+
+
+.title {
+  font-size: 2.5rem;
+  /* Large and bold */
+  font-weight: 900;
+  /* Super thick for impact */
+  text-transform: uppercase;
+  /* Capital letters */
+  letter-spacing: 2px;
+  /* Spaced-out letters for a sleek look */
+  text-align: center;
+  /* Center the title */
+  font-family: 'Poppins', 'Inter', sans-serif;
+  /* Modern font */
+  margin-bottom: 10px;
+  /* Small space below the title */
+  /* Gradient Text */
+  background: linear-gradient(90deg, rgba(255, 0, 255, 1), rgba(0, 255, 255, 1));
+  background-clip: text;
+  color: transparent;
+  /* Makes text color transparent so gradient is visible */
+}
+
+
+
+/* Title styles */
+.section-title {
+  font-size: 2rem;
+  /* A bit smaller than the main title */
+  font-weight: 700;
+  /* Bold font */
+  text-transform: uppercase;
+  /* Capitalized letters */
+  letter-spacing: 2px;
+  /* Space between letters */
+  text-align: center;
+  /* Center-align the titles */
+  margin-bottom: 20px;
+  /* Space below the title */
+  padding: 8px 20px;
+
+  /* Gradient background */
+  background: linear-gradient(90deg, rgba(255, 87, 34, 1), rgba(0, 188, 212, 1));
+  background-clip: text;
+
+  color: transparent;
+
+}
+
+
+/* FLEXBOX LAYOUT FOR SELECT DEVICE & ELAPSED TIME */
+.top-section {
+  display: flex;
+  justify-content: space-between;
+  align-items: stretch;
+  /* Ensure that all items stretch to the same height */
+  width: 100%;
+  padding: 10px;
+  gap: 20px;
+  flex-wrap: wrap;
+  position: relative;
+}
+
+.device-selector,
+.machine-type-selector,
+.clock-container,
+.timer-container,
+.text-type-selector {
+
+  flex: 1 1 200px;
+  text-align: center;
   display: flex;
   flex-direction: column;
-  justify-content: flex-start; /* Align content at the top */
-  align-items: center; /* Center content horizontally */
-  height: 100vh; /* Full viewport height */
-  width: 100%; /* Full width */
-  padding: 20px; /* Add padding to root */
-  box-sizing: border-box; /* Include padding and border in the element's total width and height */
-}
-
-/* Styling for the title */
-.title {
-  margin-top: 0; /* Remove any default margin */
-  font-size: 2rem; /* Adjust title size */
-  text-align: center; /* Ensure title text is centered */
-}
-
-/* Center the select dropdown and align it properly */
-select {
-  margin-top: 20px; /* Add margin between title and select dropdown */
+  align-items: center;
+  justify-content: space-between;
   padding: 10px;
-  font-size: 1rem;
-  width: 200px; /* Control width of the select box */
+  /* Ensure consistent padding */
+
 }
 
-/* Ensures that buttons are displayed inline with no wrapping */
-.button-container {
-  display: flex;
-  gap: 10px; /* Adds space between buttons */
-  justify-content: flex-start; /* Aligns buttons to the start of the container */
-  align-items: center; /* Vertically centers buttons */
-  margin-top: 20px;  /* Adds spacing above buttons */
-}
 
-button {
-  padding: 10px 20px; /* Adds padding for buttons */
-  font-size: 16px; /* Controls the font size */
-  cursor: pointer; /* Makes button look clickable */
-}
-button.start {
-  background-color: #28a745; /* Green color */
-  color: white; /* White text */
-}
-button.stop {
-  background-color: #dc3545; /* Red color */
-  color: white; /* White text */
-}
 
-/* Table styles */
-.table {
-  width: 100%; /* Set width of the table to 100% */
-  max-width: 900px; /* Limit the maximum width of the table */
-  margin-bottom: 20px; /* Add space between tables */
-  border-collapse: collapse; /* Ensure borders are collapsed into a single line */
-  table-layout: fixed; /* Make all columns have equal width */
-}
 
-/* Style for table headers and data cells */
-th, td {
-  padding: 12px;
-  border: 1px solid #ddd; /* Light border around the cells */
-  word-wrap: break-word; /* Ensure long words break and do not overflow */
-  text-align: center; /* Center-align content for better readability */
-}
+.clock-container,
+.timer-container {
 
-/* Define column widths to ensure consistency */
-th:nth-child(1), td:nth-child(1) {
-  width: 25%; /* Adjusted to allow better width distribution */
-}
-
-th:nth-child(2), td:nth-child(2) {
-  width: 15%; /* Second column width */
-}
-
-th:nth-child(3), td:nth-child(3) {
-  width: 15%; /* Third column width */
-}
-
-th:nth-child(4), td:nth-child(4) {
-  width: 15%; /* Fourth column width */
-}
-
-th:nth-child(5), td:nth-child(5) {
-  width: 30%; /* Adjust the "Difference" column to occupy more space */
-}
-
-th {
-  text-align: left; /* Align header text to the left */
-  background-color: #f4f4f4; /* Light gray background for header */
-}
-
-td {
-  text-align: left; /* Align data cells to the left by default */
-}
-
-/* Optional: Center any other content like labels */
-label {
-  margin-top: 10px;
-  font-size: 1rem;
-}
-
-/* Clock Styling */
-.current-time {
-  margin-top: 20px;
+  font-weight: 600;
+  /* Consistent font weight */
   font-size: 1.5rem;
+  /* Same font size */
+  color: white;
+  /* Ensure the time text is white */
+  width: 120px;
+  /* Ensure width stays consistent */
+}
+
+
+
+
+.text-type-selector input,
+.device-selector select,
+.machine-type-selector select,
+.checkStatus,
+.start,
+.stop,
+.reset,
+.ubertragen {
+  padding: 10px 15px;
+  font-size: 1.2rem;
+  width: 200px;
+  /* Fixed width for consistency */
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  margin-bottom: 10px;
+  box-sizing: border-box;
+  line-height: 1.2;
+  /* or 1.5, but be consistent */
+  height: 40px;
+  /* Match button height */
+}
+
+.checkStatus {
+  font-size: 1.2rem;
+  /* Ensure same font size as input/select */
   font-weight: bold;
-  color: #333; /* Dark text color for better readability */
+  /* Bold text for the button */
+  background: linear-gradient(135deg, #e7ae0f);
+  /* Gradient background */
+  color: white;
+  /* Text color */
+  cursor: pointer;
+  /* Pointer cursor on hover */
+  transition: 0.3s ease-in-out;
+  /* Smooth transition */
+  display: inline-flex;
+  /* Center the text inside the button */
+  justify-content: center;
+  align-items: center;
+  width: 200px;
+  /* Fixed width for button to match input/select */
+  height: 40px;
+  /* Same height as input/select */
+  line-height: 1.5;
+}
+
+/* Button disabled state */
+.checkStatus:disabled {
+  background: #95a5a6;
+  cursor: not-allowed;
+}
+
+.clock-container {
+  text-align: center;
+  /* Ensure the text is centered */
+  height: 50px;
+  /* Set fixed height */
+  line-height: 50px;
+  /* Vertically align the text */
+  font-size: 2rem;
+  /* Font size */
+  width: 120px;
+  /* Fixed width to accommodate time format like 99:59:59 */
+  font-family: "Roboto Mono", monospace;
+  /* A more modern monospace font */
+  font-weight: bold;
+  /* Make the text bolder */
+  overflow: hidden;
+  /* Hide any overflow if the time overflows */
+  white-space: nowrap;
+  /* Prevent the time from wrapping */
+}
+
+.timer-container {
+  text-align: left;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: white;
+}
+
+/* Button Container */
+.button-group {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  align-items: center;
+  /* Align buttons vertically with inputs */
+  flex: 1 1 200px;
+  /* Make it behave like other sections */
   padding: 10px;
-  background-color: #f0f8ff; /* Light blue background for the clock */
-  border-radius: 8px; /* Rounded corners for the clock */
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Light shadow for the clock */
-  display: inline-block; /* Makes sure the clock has its own space */
-  text-align: center; /* Center the time */
+}
+
+
+.field-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  flex: 1 1 200px;
+  padding: 10px;
+  text-align: center;
+}
+
+.field-group label {
+  font-size: 1.2rem;
+  font-weight: bold;
+  margin-bottom: 8px;
+}
+
+
+/* General Button Styling */
+.start,
+.stop,
+.reset,
+.ubertragen {
+  height: 40px;
+  /* Match input/select/checkStatus height */
+  width: 200px;
+  /* Match input/select/checkStatus width */
+  font-size: 1.2rem;
+  font-weight: bold;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: 0.3s ease-in-out;
+  padding: 0 15px;
+  /* Match horizontal padding */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+
+.machine-type-selector select:disabled {
+  background: #95a5a6;
+  cursor: not-allowed;
+}
+
+.device-selector select:disabled {
+  background: #95a5a6;
+  cursor: not-allowed;
+}
+
+.start:disabled {
+  background: #95a5a6;
+  cursor: not-allowed;
+}
+
+.stop:disabled {
+  background: #95a5a6;
+  cursor: not-allowed;
+}
+
+.reset:disabled {
+  background: #95a5a6;
+  cursor: not-allowed;
+}
+.ubertragen:disabled {
+  background: #95a5a6;
+  cursor: not-allowed;
+}
+
+
+.start {
+  background: linear-gradient(135deg, #27ae60, #2ecc71);
+  color: white;
+}
+
+.stop {
+  background: linear-gradient(135deg, #e74c3c, #c0392b);
+  color: white;
+}
+
+.reset {
+  background: linear-gradient(135deg, #3090cf);
+  color: white;
+}
+.ubertragen {
+  background: linear-gradient(135deg, #cf30c7);
+  color: white;
+}
+
+
+
+
+/* Ensure the options inside the dropdown are centered */
+select option {
+  text-align: center;
+  /* Centers the text horizontally inside each option */
+}
+
+select option:first-child {
+  text-align: center;
+}
+
+.out-of-range {
+  background-color: red;
+  color: white;
+}
+
+body {
+  background: linear-gradient(135deg, #1e3c72, #2a5298);
+  /* Deep blue gradient */
+  color: #ffffff;
+  font-family: "Poppins", sans-serif;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  flex-direction: column;
+  gap: 20px;
 }

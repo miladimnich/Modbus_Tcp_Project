@@ -1,99 +1,19 @@
-html, body {
-  height: 100%;
+/* index.css */
+* {
   margin: 0;
-}
-
-/* Root container layout */
-#root {
-  display: flex;
-  flex-direction: column;  /* Keeps the general layout as a column */
-  justify-content: flex-start; /* Align content to the top of the container */
-  align-items: center; /* Center horizontally */
-  height: 100vh; /* Full height of the viewport */
-  width: 100%; /* Full width */
-  padding: 20px;
+  padding: 0;
   box-sizing: border-box;
 }
 
-/* Styling for the title */
-.title {
-  margin-top: 0;
-  font-size: 2rem;
-  text-align: center;
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
+    Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji",
+    "Segoe UI Symbol", "Noto Color Emoji";
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* Select dropdown style */
-select {
-  margin-top: 20px;
-  padding: 10px;
-  font-size: 1rem;
-  width: 200px;
-}
-
-/* Ensure that buttons are displayed inline (horizontal layout) */
-.button-container {
-  display: flex;
-  gap: 10px; /* Adds space between buttons */
-  justify-content: flex-start; /* Align buttons to the left of the container */
-  align-items: center; /* Vertically center buttons */
-  margin-top: 20px;  /* Adds spacing above buttons */
-}
-
-/* Style for buttons */
-button {
-  padding: 10px 20px;
-  font-size: 16px;
-  cursor: pointer;
-  border-radius: 8px;
-  border: 1px solid transparent;
-  background-color: #1a1a1a;
-  color: white;
-  transition: border-color 0.25s;
-}
-
-/* Hover effect on buttons */
-button:hover {
-  border-color: #646cff;
-}
-
-/* Focus style for buttons */
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
-}
-
-/* Optional: Label style */
-label {
-  margin-top: 10px;
-  font-size: 1rem;
-}
-
-/* Table Styles */
-.table {
-  width: 50%; /* Table will now occupy full available width */
-  max-width: 50%; /* Limit the max width to the container */
-  margin-top: 20px; /* Adds some space before the table */
-  margin-bottom: 20px; /* Adds space between tables */
-  border-collapse: collapse; /* Ensures no extra space between cells */
-  table-layout: fixed; /* Fix the table layout to ensure equal column widths */
-}
-
-/* Styling for table headers and data cells */
-th, td {
-  padding: 6px; /* Reduced padding for a more compact appearance */
-  border: 1px solid #ddd; /* Light border around the cells */
-  text-align: center; /* Center-align content for better readability */
-  word-wrap: break-word; /* Ensures long words break and do not overflow */
-  height: 5px; /* Set a fixed height for rows to keep them narrow */
-}
-
-/* Ensure equal column widths */
-th, td {
-  width: 20%; /* Set width for all columns to be equal */
-}
-
-/* Optional: Optional table header background */
-th {
-  background-color: #f4f4f4;
-  text-align: left;
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, "Courier New", monospace;
 }
