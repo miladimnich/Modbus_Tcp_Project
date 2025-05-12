@@ -4,12 +4,12 @@ import com.example.backend.models.SubDevice;
 
 public enum HeatingCalculationType {
   ERZEUGTE_ENERGIE_HEATING(10),
-  VORLAUFTEMPERATUR(20),
-  VOLUMENSTROM(30),
-  TEMPERATURDIFFERENZ(40),
-  LEISTUNG(50),
-  GESAMT_VOLUMEN(60),
-  RuCKLAUFTEMPERATUR(70);
+  VORLAUFTEMPERATUR(50),
+  VOLUMENSTROM(40),
+  TEMPERATURDIFFERENZ(70),
+  LEISTUNG(30),
+  GESAMT_VOLUMEN(20),
+  RuCKLAUFTEMPERATUR(60);
 
 
 
@@ -23,4 +23,6 @@ public enum HeatingCalculationType {
     int baseAddress = subDevice.getStartAddress();
     return baseAddress + offset;
   }
+
+
 }

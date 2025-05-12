@@ -1,16 +1,16 @@
 package com.example.backend.service;
 
-
-import com.example.backend.enums.SubDeviceType;
 import com.example.backend.exception.ModbusDeviceException;
 import com.example.backend.models.ModbusDevice;
+import com.example.backend.models.SubDevice;
 import com.serotonin.modbus4j.exception.ModbusTransportException;
-import com.serotonin.modbus4j.sero.messaging.TimeoutException;
 import com.serotonin.modbus4j.sero.messaging.WaitingRoomException;
 import java.util.List;
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import com.serotonin.modbus4j.sero.messaging.TimeoutException;
+
 
 @Service
 public class ModbusBitwiseService {
@@ -23,11 +23,11 @@ public class ModbusBitwiseService {
   }
 
   public long bitwiseShiftCalculation(int testStationId, int startAddress,
-      ModbusDevice modbusDevice, SubDeviceType subDeviceType)
+      ModbusDevice modbusDevice, SubDevice subDevice)
       throws WaitingRoomException, ModbusTransportException, TimeoutException, ModbusDeviceException {
 
     List<Map<String, Object>> registers = modbusRegisterService.getRegistersForDevice(testStationId,
-        startAddress, modbusDevice, subDeviceType);
+        startAddress, modbusDevice, subDevice);
 
     long result;
     if (registers.isEmpty()) {
@@ -48,6 +48,11 @@ public class ModbusBitwiseService {
     } else if (registers.size() == 1) {
       int register1 = (int) registers.get(0).get("value");
       result = (long) register1;
+    } else if (registers.size() == 2) {
+      int register1 = (int) registers.get(0).get("value");
+      int register2 = (int) registers.get(1).get("value");
+      result = ((long) register1 << 16) | (long) register2;
+
     } else {
       throw new IllegalStateException(
           "Unexpected number of registers for bitwise shift calculation.");

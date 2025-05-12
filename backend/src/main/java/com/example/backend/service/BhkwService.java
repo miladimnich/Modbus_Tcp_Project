@@ -1,5 +1,8 @@
 package com.example.backend.service;
 
+import static com.example.backend.enums.BhkwCalculationType.BETRIEBS_STUNDEN;
+import static com.example.backend.enums.BhkwCalculationType.START_ANZAHL;
+
 import com.example.backend.config.WebSocketHandlerCustom;
 import com.example.backend.enums.BhkwCalculationType;
 import com.example.backend.enums.SubDeviceType;
@@ -7,11 +10,14 @@ import com.example.backend.exception.ModbusDeviceException;
 import com.example.backend.models.ModbusDevice;
 import com.example.backend.models.SubDevice;
 import com.example.backend.models.TestStation;
+import com.example.backend.service.DeviceService;
+import com.example.backend.service.ModbusBitwiseService;
 import com.serotonin.modbus4j.exception.ModbusTransportException;
 import com.serotonin.modbus4j.sero.messaging.TimeoutException;
 import com.serotonin.modbus4j.sero.messaging.WaitingRoomException;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import lombok.Getter;
@@ -20,11 +26,12 @@ import org.springframework.stereotype.Service;
 @Service
 public class BhkwService {
   @Getter
-  private final Map<String, Long> firstResults = new ConcurrentHashMap<>();
+  private final Map<String, Object> firstResults = new ConcurrentHashMap<>();
   @Getter
-  private final Map<String, Long> currentResults = new ConcurrentHashMap<>();
+  private final Map<String, Object> currentResults = new ConcurrentHashMap<>();
   @Getter
-  private final Map<String, Long> lastResults = new ConcurrentHashMap<>();
+  private final Map<String, Object> lastResults = new ConcurrentHashMap<>();
+
   private final ModbusBitwiseService modbusBitwiseService;
   private final DeviceService deviceService;
   private final WebSocketHandlerCustom webSocketHandlerCustom;
@@ -48,30 +55,38 @@ public class BhkwService {
         if (subDevice.getType().equals(SubDeviceType.BHKW)) {
           List<BhkwCalculationType> bhkwCalculationTypes = subDevice.getBhkwCalculationTypes();
           long totalStartTime = System.currentTimeMillis();
+
+          System.out.println("BHKW Type List Size: " + bhkwCalculationTypes.size());
           for (BhkwCalculationType bhkwCalculationType : bhkwCalculationTypes) {
             // Check for interruption before each calculation
             if (Thread.currentThread().isInterrupted()) {
               System.out.println("Thread interrupted while processing for device " + deviceId);
               return;  // Return early if the thread is interrupted
             }
-
+            System.out.println("type " + bhkwCalculationType + " start Address " + bhkwCalculationType.getStartAddress(subDevice));
             int startAddress = bhkwCalculationType.getStartAddress(subDevice);
 
             try {
               long result;
               switch (bhkwCalculationType) {
 
-                case EXHAUST_GAS_TEMPERATURE, HEATING_WATER_FLOW, HEATING_WATER_RETURN,
-                     ENGINE_COOLANT_RETURN, ENGINE_COOLANT_FLOW,
-                     CONTROLLER, BOX, GENERATOR_WINDING,
-                     ENGINE_OIL:
-                  result = modbusBitwiseService.bitwiseShiftCalculation(deviceId, startAddress, modbusDevice, subDevice.getType());
-                  System.out.println("Calculated Value: " + bhkwCalculationType.name() + " = " + result);
+                case ABGAS_TEMPERATUR, HEIZUNGS_WASSER_VORLAUF, HEIZUNGS_WASSER_RUCKLAUF,
+                     MOTOR_KUHLMITTEL_RUCKLAUF, MOTOR_KUHLMITTEL_VORLAUF,
+                     SCHALTSCHRANK, GEHAUSE, GENERATOR_WICKLUNG,
+                     MOTOR_OIL, BETRIEBS_STUNDEN, START_ANZAHL:
 
-                  processAndPush(deviceId, bhkwCalculationType.name(), result);
-                  break;
+                  result = modbusBitwiseService.bitwiseShiftCalculation(deviceId, startAddress, modbusDevice, subDevice);
 
+                  if (bhkwCalculationType.equals(BETRIEBS_STUNDEN) || bhkwCalculationType.equals(START_ANZAHL)) {
+                    processAndPush(deviceId, bhkwCalculationType.name(), result);
+                    break;
+                  } else {
+                    System.out.println("Calculated Value: " + bhkwCalculationType.name() + " = " + result);
+                    String formattedResult = String.format(Locale.US, "%.2f", ((double) result / 10));
 
+                    processAndPush(deviceId, bhkwCalculationType.name(), formattedResult);
+                    break;
+                  }
                 default:
                   System.out.println("Unhandled EnergyCalculationType: " + bhkwCalculationType);
                   return;
@@ -113,13 +128,14 @@ public class BhkwService {
     }
   }
 
-  public void processAndPush(int deviceId, String key, long value) {
+  public void processAndPush(int deviceId, String key, Object value) {
     System.out.println("Processing value: Key = " + key + ", Value = " + value + ", DeviceId = " + deviceId);
 
     boolean valueChanged = !lastResults.containsKey(key);
 
     currentResults.put(key, value);
     lastResults.putIfAbsent(key, value);
+
 
     if (!currentResults.get(key).equals(lastResults.get(key))) {
       lastResults.put(key, value);
@@ -149,14 +165,13 @@ public class BhkwService {
   }
 
 
-  public Map<String, Long> startResults(int deviceId) {
+  public Map<String, Object> startResults(int deviceId) {
     firstResults.putAll(currentResults);
     return firstResults;
   }
 
-  public Map<String, Long> lastResults(int deviceId) {
+  public Map<String, Object> lastResults(int deviceId) {
     return lastResults;
   }
-
 
 }

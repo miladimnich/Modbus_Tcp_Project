@@ -56,5 +56,3 @@ public class SubDevice {
     this.startAddress = startAddress;
   }
 }
-
-

@@ -1,24 +1,24 @@
 package com.example.backend.service;
 
+import static com.example.backend.enums.HeatingCalculationType.ERZEUGTE_ENERGIE_HEATING;
 
-import com.example.backend.config.ModbusLock;
 import com.example.backend.config.WebSocketHandlerCustom;
 import com.example.backend.enums.HeatingCalculationType;
 import com.example.backend.enums.SubDeviceType;
-
 import com.example.backend.exception.ModbusDeviceException;
 import com.example.backend.models.ModbusDevice;
 import com.example.backend.models.SubDevice;
 import com.example.backend.models.TestStation;
+
 import com.serotonin.modbus4j.exception.ModbusTransportException;
 import com.serotonin.modbus4j.sero.messaging.TimeoutException;
 import com.serotonin.modbus4j.sero.messaging.WaitingRoomException;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.locks.ReentrantLock;
+import java.util.concurrent.atomic.AtomicReference;
 import lombok.Getter;
 import org.springframework.stereotype.Service;
 
@@ -26,11 +26,15 @@ import org.springframework.stereotype.Service;
 public class HeatingService {
 
   @Getter
-  private final Map<String, Long> firstHeatingResults = new ConcurrentHashMap<>();
+  private final Map<String, Object> firstHeatingResults = new ConcurrentHashMap<>();
   @Getter
-  private final Map<String, Long> currentHeatingResults = new ConcurrentHashMap<>();
+  private final Map<String, Object> currentHeatingResults = new ConcurrentHashMap<>();
   @Getter
-  private final Map<String, Long> lastHeatingResults = new ConcurrentHashMap<>();
+  private final Map<String, Object> lastHeatingResults = new ConcurrentHashMap<>();
+
+
+  private final AtomicReference<Double> heatingDifference = new AtomicReference<>(Double.NaN);
+
 
   private final WebSocketHandlerCustom webSocketHandlerCustom;
 
@@ -45,8 +49,27 @@ public class HeatingService {
     this.deviceService = deviceService;
   }
 
-  public void processHeatingData(int deviceId) throws InterruptedException {
+
+
+  public Double getHeatingDifference() {
+    return heatingDifference.get();
+  }
+
+  public void clearHeatingDifference() {
+    heatingDifference.set(Double.NaN);
+  }
+
+
+
+  public void processHeatingData(int deviceId) throws InterruptedException{
     TestStation testStation = deviceService.getTestStationById(deviceId);
+
+    if (!hasHeatingSubDevice(deviceId)) {
+      System.out.println("No HEATING subdevice found for deviceId: " + deviceId + ". Skipping processHeatingData.");
+      return;
+    }
+
+
     for (ModbusDevice modbusDevice : testStation.getModbusdevices()) {
       List<SubDevice> heatingSubDevices = modbusDevice.getSubDevices();
       for (SubDevice subDevice : heatingSubDevices) {
@@ -58,15 +81,36 @@ public class HeatingService {
             int startAddress = heatingCalculationType.getStartAddress(subDevice);
 
             try {
-
               long result;
               switch (heatingCalculationType) {
                 case ERZEUGTE_ENERGIE_HEATING, VORLAUFTEMPERATUR, VOLUMENSTROM, TEMPERATURDIFFERENZ,
                      LEISTUNG, GESAMT_VOLUMEN, RuCKLAUFTEMPERATUR:
 
-                  result = modbusBitwiseService.bitwiseShiftCalculation(deviceId, startAddress, modbusDevice, subDevice.getType());
+                  result = modbusBitwiseService.bitwiseShiftCalculation(deviceId, startAddress, modbusDevice, subDevice);
+
                   System.out.println("Calculated Value: " + heatingCalculationType.name() + " = " + result);
-                  processAndPush(deviceId, heatingCalculationType.name(), result);
+                  if (heatingCalculationType == HeatingCalculationType.VORLAUFTEMPERATUR ||
+                      heatingCalculationType == HeatingCalculationType.TEMPERATURDIFFERENZ ||
+                      heatingCalculationType == HeatingCalculationType.RuCKLAUFTEMPERATUR
+                  ) {
+                    double value = (double) result / 100;
+                    String formattedResult = String.format(Locale.US, "%.2f", value);
+                    processAndPush(deviceId, heatingCalculationType.name(), formattedResult);
+
+                  } else if (heatingCalculationType == HeatingCalculationType.GESAMT_VOLUMEN ||
+                      heatingCalculationType == HeatingCalculationType.LEISTUNG) {
+                    double value = (double) result / 1000;
+                    String formattedResult = String.format(Locale.US, "%.2f", value);
+                    processAndPush(deviceId, heatingCalculationType.name(), formattedResult);
+                  } else if (heatingCalculationType == HeatingCalculationType.VOLUMENSTROM) {
+                    double value = (double) result / 60;
+                    String formattedResult = String.format(Locale.US, "%.2f", value);
+                    processAndPush(deviceId, heatingCalculationType.name(), formattedResult);
+                  } else {
+                    processAndPush(deviceId, heatingCalculationType.name(), result);
+                  }
+
+
                   break;
                 default:
                   System.out.println("Unhandled heatingCalculationType: " + heatingCalculationType);
@@ -108,7 +152,15 @@ public class HeatingService {
   }
 
 
-  public void processAndPush(int deviceId, String key, long value) {
+  public boolean hasHeatingSubDevice(int deviceId) {
+    TestStation testStation = deviceService.getTestStationById(deviceId);
+    return testStation.getModbusdevices().stream()
+        .flatMap(modbusDevice -> modbusDevice.getSubDevices().stream())
+        .anyMatch(subDevice -> subDevice.getType() == SubDeviceType.HEATING);
+  }
+
+
+  public void processAndPush(int deviceId, String key, Object value) {
     System.out.println("Processing value: Key = " + key + ", Value = " + value + ", DeviceId = " + deviceId);
 
     boolean valueChanged = !lastHeatingResults.containsKey(key);
@@ -144,16 +196,61 @@ public class HeatingService {
 
   }
 
-  public Map<String, Long> startResults(int deviceId) {
+
+  public void calculateAndPushHeatingDifference(int deviceId) throws InterruptedException {
+    List<SubDevice> heatingSubDevices = deviceService.getSubDevicesByType(deviceId,
+        SubDeviceType.HEATING);
+    for (SubDevice subDevice : heatingSubDevices) {
+      List<HeatingCalculationType> heatingCalculationTypes = subDevice.getHeatingCalculationTypes();
+      for (HeatingCalculationType heatingCalculationType : heatingCalculationTypes) {
+        if (heatingCalculationType.equals(ERZEUGTE_ENERGIE_HEATING)) {
+
+          String key = heatingCalculationType.name();
+          if (currentHeatingResults.get(key) != null && firstHeatingResults.get(key) != null) {
+
+
+            if (!currentHeatingResults.get(key).equals(firstHeatingResults.get(key))) {
+              double currentResult = Double.parseDouble(currentHeatingResults.get(key).toString());
+              double previousResult = Double.parseDouble(firstHeatingResults.get(key).toString());
+              double difference = currentResult - previousResult;
+
+              if (!Double.isNaN(difference) && !Double.isInfinite(difference)) {
+                heatingDifference.set(difference);
+
+              }
+
+
+              Map<String, Object> update = new LinkedHashMap<>();
+              update.put(key, String.format(Locale.US, "%.2f", heatingDifference.get()));
+              update.put("deviceId", deviceId);
+              update.put("difference", key);
+              // Re-check WebSocket session availability before pushing data
+              if (!webSocketHandlerCustom.getConnectedSessions().isEmpty()) {
+                try {
+                  System.out.println("Enqueuing data: " + update);
+                  webSocketHandlerCustom.enqueueUpdate(update);
+                } catch (Exception e) {
+                  System.err.println("Error while enqueuing WebSocket update: " + e.getMessage());
+                }
+              } else {
+                System.out.println("WebSocket session is no longer available. Skipping WebSocket push.");
+              }
+
+            }
+          }
+        }
+      }
+    }
+  }
+
+  public Map<String, Object> startResults(int deviceId) {
     firstHeatingResults.putAll(currentHeatingResults);
     return firstHeatingResults;
   }
 
-  public Map<String, Long> lastResults(int deviceId) {
+  public Map<String, Object> lastResults(int deviceId) {
     return lastHeatingResults;
   }
 }
-
-
 
 

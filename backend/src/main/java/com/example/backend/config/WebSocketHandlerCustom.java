@@ -1,11 +1,12 @@
 package com.example.backend.config;
 
-import com.example.backend.service.StartPollingEvent;
-import com.example.backend.service.StopPollingEvent;
+import com.example.backend.events.StartPollingEvent;
+import com.example.backend.events.StopPollingEvent;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.PreDestroy;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
@@ -32,10 +33,13 @@ public class WebSocketHandlerCustom extends TextWebSocketHandler {
   private final Map<WebSocketSession, Integer> sessionDeviceMap = new ConcurrentHashMap<>(); // Track device per session
   private final ApplicationEventPublisher eventPublisher;
   private final ScheduledExecutorService pollingExecutor;
+
   private final Queue<Map<String, Object>> updateQueue = new ConcurrentLinkedQueue<>();
   private final List<ScheduledFuture<?>> scheduledTasks = new ArrayList<>();  // Track scheduled tasks
   private static final int MAX_BATCH_SIZE = 10;
   private static final int MAX_QUEUE_SIZE = 50;
+  private int currentDeviceId = -1;
+
 
   @Autowired
   public WebSocketHandlerCustom(ApplicationEventPublisher eventPublisher, ScheduledExecutorService pollingExecutor) {
@@ -117,18 +121,62 @@ public class WebSocketHandlerCustom extends TextWebSocketHandler {
     scheduledTasks.clear();  // Clear the list of tasks
   }
 
+  // Manually flush the update queue to open sessions before shutting down
+  public void flushPendingDataToOpenSessionsBeforeShutdown(int deviceId) {
 
-  public void closeAllWebSocketSessions() {
+    if (!updateQueue.isEmpty() && !connectedSessions.isEmpty()) {
+      System.out.println("Flushing updateQueue to clients. Contents:");
+      updateQueue.forEach(System.out::println);  // Log each item
+
+      List<Map<String, Object>> batch = new ArrayList<>();
+      while (!updateQueue.isEmpty()) {
+        batch.add(updateQueue.poll());
+      }
+
+      pushDataToClients(batch);  // Push the remaining data to open sessions
+
+      String response = "Polling stopped";
+      Map<String, Object> stopMeasurement = new HashMap<>();
+
+
+      try {
+        System.out.println("Sending STOP_POLLING event to WebSocket clients...");
+        stopMeasurement.put("stopPolling", response);
+        stopMeasurement.put("deviceId", deviceId);
+        pushDataToClients(stopMeasurement);
+
+      } catch (Exception e) {
+        System.err.println("Error while sending STOP_POLLING event: " + e.getMessage());
+      }
+    } else {
+      System.out.println("Nothing to flush. updateQueue or connectedSessions is empty.");
+    }
+  }
+
+
+  public void closeAllWebSocketSessions(int deviceId) {
     try {
+      System.out.println("Preparing to close all WebSocket sessions...");
+      System.out.println("updateQueue before flush:");
+      updateQueue.forEach(System.out::println);
+
+
+      flushPendingDataToOpenSessionsBeforeShutdown(deviceId);
+
       for (WebSocketSession session : connectedSessions) {
         if (session.isOpen()) {
           session.close();  // Close the WebSocket session
           System.out.println("WebSocket session closed.");
         }
       }
+
+      System.out.println("updateQueue after flush and before clearing:");
+      updateQueue.forEach(System.out::println);
       // Clear the sessions list after closing
       connectedSessions.clear();
       cancelScheduledTasks();  // Cancel all scheduled tasks
+      System.out.println("updateQueue contents before clearing: " + new ArrayList<>(updateQueue));
+      updateQueue.clear();
     } catch (IOException e) {
       e.printStackTrace();
     }
@@ -152,6 +200,7 @@ public class WebSocketHandlerCustom extends TextWebSocketHandler {
 
   @Override
   public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
+
     connectedSessions.remove(session);
     System.out.println("WebSocket session closed: " + session.getId());
     cancelScheduledTasks();  // Cancel all scheduled tasks
@@ -160,8 +209,11 @@ public class WebSocketHandlerCustom extends TextWebSocketHandler {
     if (deviceId != null && connectedSessions.isEmpty()) {
       System.out.println("Stopping polling for device: " + deviceId);
       eventPublisher.publishEvent(new StopPollingEvent(this, deviceId));
+      System.out.println("updateQueue contents before clearing: " + new ArrayList<>(updateQueue));
+      updateQueue.clear();
     }
   }
+
 
   // Shutdown the executor gracefully
   @PreDestroy

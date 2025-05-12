@@ -1,17 +1,20 @@
 package com.example.backend.config;
 
+import com.example.backend.events.StartPollingEvent;
+import com.example.backend.events.StopPollingEvent;
+import com.example.backend.exception.PollingException;
 import com.example.backend.service.BhkwService;
 import com.example.backend.service.EnergyService;
 import com.example.backend.service.GasService;
 import com.example.backend.service.HeatingService;
-import com.example.backend.service.StartPollingEvent;
-import com.example.backend.service.StopPollingEvent;
- import jakarta.annotation.PreDestroy;
+import jakarta.annotation.PreDestroy;
 import java.util.ArrayList;
 import java.util.List;
  import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import lombok.Getter;
 import lombok.Synchronized;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.event.EventListener;
@@ -24,24 +27,31 @@ public class ModbusPollingService {
   private final HeatingService heatingService;
   private final GasService gasService;
   private final BhkwService bhkwService;
-  public volatile boolean isRunning = false;
+  private final MeasurementSessionRegistry measurementSessionRegistry;
+  private final AtomicBoolean isRunning = new AtomicBoolean(false);
   int currentDeviceId = -1;
   private final WebSocketHandlerCustom webSocketHandlerCustom;
   private final List<ScheduledFuture<?>> scheduledTasks = new ArrayList<>();
   private final ScheduledExecutorService executorService;
-  private boolean isMeasureStarted = false;
+  private final AtomicBoolean isMeasureStarted = new AtomicBoolean(false);
 
+
+  @Getter
+  private volatile Long endTime;
 
 
   @Autowired
   public ModbusPollingService(EnergyService energyService, HeatingService heatingService,
-      GasService gasService, BhkwService bhkwService, WebSocketHandlerCustom webSocketHandlerCustom, ScheduledExecutorService executorService) {
+      GasService gasService, BhkwService bhkwService, MeasurementSessionRegistry measurementSessionRegistry, WebSocketHandlerCustom webSocketHandlerCustom, ScheduledExecutorService executorService) {
     this.energyService = energyService;
     this.heatingService = heatingService;
     this.gasService = gasService;
     this.bhkwService = bhkwService;
+    this.measurementSessionRegistry = measurementSessionRegistry;
+
     this.webSocketHandlerCustom = webSocketHandlerCustom;
     this.executorService = executorService;
+
   }
 
   @EventListener
@@ -58,7 +68,10 @@ public class ModbusPollingService {
 
   @Synchronized
   public void startPolling(int deviceId) {
-    if (deviceId != currentDeviceId && isRunning) {
+    if (webSocketHandlerCustom.getConnectedSessions().isEmpty()) {
+      throw new PollingException("No active WebSocket connection.");
+    }
+    if (deviceId != currentDeviceId && isRunning.get()) {
       stopPolling(currentDeviceId);
       try {
         Thread.sleep(100); // Short delay before restarting
@@ -68,13 +81,13 @@ public class ModbusPollingService {
         return;
       }
     }
-    if (isRunning || isMeasureStarted) {
+    if (isRunning.get() || isMeasureStarted.get()) {
       System.out.println("Polling is stopping. Cannot start new polling.");
       return; // Prevent starting new polling if it's already running
     }
     clearPreviousResults();
     currentDeviceId = deviceId;
-    isRunning = true;
+    isRunning.set(true);
 
     webSocketHandlerCustom.startWebSocketUpdateTask();  // Start sending updates
 
@@ -140,22 +153,24 @@ public class ModbusPollingService {
           return; // Exit early
         }
         gasService.processGasData(deviceId);
+
       } catch (InterruptedException e) {
         System.out.println("Thread interrupted during data processing");
         stopPolling(deviceId);
       }
       System.out.println("Completed processGasData for device " + deviceId);
     }, 0, 1, TimeUnit.SECONDS));
+
   }
 
 
   public synchronized void startMeasureTask(int deviceId) {
-    if (isMeasureStarted || isRunning) {
+    if (isMeasureStarted.get()) {
       System.out.println("Measure task is already started for device " + deviceId);
       return; // Prevent starting measure task again if already running
     }
 
-    isMeasureStarted = true;  // Mark measure task as started
+    isMeasureStarted.set(true);  // Mark measure task as started
 
     scheduledTasks.add(executorService.scheduleWithFixedDelay(() -> {
       try {
@@ -164,28 +179,69 @@ public class ModbusPollingService {
           cancelScheduledTasks();
           return; // Exit early
         }
-        gasService.calculateAndPushMeterDifference(deviceId);  // Trigger gas calculation
+
+        gasService.calculateAndPushMeterDifference(deviceId);
 
       } catch (InterruptedException e) {
         System.out.println("Thread interrupted during data processing");
         stopPolling(deviceId);
       }
 
-      System.out.println(Thread.currentThread().getName() + " for device " + deviceId);
+      System.out.println(Thread.currentThread().getName() + " for device (meterDifference) " + deviceId);
+    }, 0, 1, TimeUnit.SECONDS));
+
+    scheduledTasks.add(executorService.scheduleWithFixedDelay(() -> {
+      try {
+        if (Thread.currentThread().isInterrupted()) {
+          System.out.println("Thread was interrupted, stopping task...");
+          cancelScheduledTasks();
+          return; // Exit early
+        }
+
+        energyService.calculateAndPushEnergyDifference(deviceId);
+
+      } catch (InterruptedException e) {
+        System.out.println("Thread interrupted during data processing");
+        stopPolling(deviceId);
+      }
+
+      System.out.println(Thread.currentThread().getName() + " for device (energyDifference) " + deviceId);
+    }, 0, 1, TimeUnit.SECONDS));
+
+    scheduledTasks.add(executorService.scheduleWithFixedDelay(() -> {
+      try {
+        if (Thread.currentThread().isInterrupted()) {
+          System.out.println("Thread was interrupted, stopping task...");
+          cancelScheduledTasks();
+          return; // Exit early
+        }
+
+        heatingService.calculateAndPushHeatingDifference(deviceId);
+
+      } catch (InterruptedException e) {
+        System.out.println("Thread interrupted during data processing");
+        stopPolling(deviceId);
+      }
+
+      System.out.println(Thread.currentThread().getName() + " for device (heatingDifference) " + deviceId);
     }, 0, 1, TimeUnit.SECONDS));
   }
 
 
   public synchronized void stopPolling(int deviceId) {
-    isRunning = false;
-    isMeasureStarted = false;
-    cancelScheduledTasks();
-    if (!webSocketHandlerCustom.getConnectedSessions().isEmpty()) {
-      webSocketHandlerCustom.closeAllWebSocketSessions();
-      System.out.println("WebSocket all connections closed.");
+    if (!isRunning.getAndSet(false)) {
+      return;
     }
-    System.out.println("Polling stopped for device " + deviceId);
+    isRunning.set(false);
+    isMeasureStarted.set(false);
+    cancelScheduledTasks();
+    gasService.cancelScheduledTasks();
     currentDeviceId = -1;
+    endTime = System.currentTimeMillis();
+    if (!webSocketHandlerCustom.getConnectedSessions().isEmpty()) {
+      webSocketHandlerCustom.closeAllWebSocketSessions(deviceId);
+      System.out.println("Polling stopped for device " + deviceId);
+    }
   }
 
 
@@ -193,18 +249,35 @@ public class ModbusPollingService {
     energyService.getFirstEnergyResults().clear();
     energyService.getCurrentEnergyResults().clear();
     energyService.getLastEnergyResults().clear();
+    energyService.clearEnergyDifference();
+
+    gasService.getFirstResults().clear();
+    gasService.getCurrentResults().clear();
+    gasService.getLastResults().clear();
+    gasService.getAccumulatedDifference().clear();
+    gasService.getPreviousResults().clear();
+    gasService.clearTotalDifference();
+    gasService.clearEnvironmentPressure();
+    gasService.clearGasPressure();
+    gasService.clearGasTempereture();
+    gasService.setFirstResultsPopulated(false);
+    gasService.getShouldStop().set(false);
+
+
     heatingService.getFirstHeatingResults().clear();
     heatingService.getLastHeatingResults().clear();
     heatingService.getCurrentHeatingResults().clear();
-    gasService.getFirstResults().clear();
-    gasService.getCurrentResults().clear();
-    gasService.getAccumulatedDifference().clear();
-    gasService.getPreviousResults().clear();
-    gasService.setTotalDifference(0);
-    gasService.getLastResults().clear();
+    heatingService.clearHeatingDifference();
+
+    gasService.clearGasLeistungResult();
+
     bhkwService.getFirstResults().clear();
     bhkwService.getCurrentResults().clear();
     bhkwService.getLastResults().clear();
+
+    measurementSessionRegistry.getDeviceToSerienNummer().clear();
+
+
   }
 
 
@@ -220,6 +293,8 @@ public class ModbusPollingService {
 
   @PreDestroy
   public void shutdown() {
+    System.out.println("Shutting down ModbusPollingService... from poll Service");
+    webSocketHandlerCustom.closeAllWebSocketSessions(currentDeviceId);
     executorService.shutdown(); // Gracefully shuts down the executor service
     try {
       if (!executorService.awaitTermination(60, TimeUnit.SECONDS)) {
@@ -230,5 +305,6 @@ public class ModbusPollingService {
       Thread.currentThread().interrupt();
     }
   }
-}
 
+
+}

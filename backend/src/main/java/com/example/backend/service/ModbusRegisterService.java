@@ -1,25 +1,24 @@
 package com.example.backend.service;
 
 import com.example.backend.config.WebSocketHandlerCustom;
-import com.example.backend.enums.SubDeviceType;
 import com.example.backend.exception.ModbusDeviceException;
 import com.example.backend.models.ModbusDevice;
 import com.example.backend.models.SubDevice;
 import com.example.backend.models.TestStation;
+import com.serotonin.modbus4j.sero.messaging.TimeoutException;
 
 import com.serotonin.modbus4j.ModbusMaster;
 import com.serotonin.modbus4j.code.ExceptionCode;
 import com.serotonin.modbus4j.exception.ModbusTransportException;
-
 import com.serotonin.modbus4j.msg.ReadHoldingRegistersRequest;
 import com.serotonin.modbus4j.msg.ReadHoldingRegistersResponse;
-import com.serotonin.modbus4j.sero.messaging.TimeoutException;
 import com.serotonin.modbus4j.sero.messaging.WaitingRoomException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-
-import java.util.*;
-
 
 @Service
 public class ModbusRegisterService {
@@ -39,54 +38,52 @@ public class ModbusRegisterService {
   }
 
   public List<Map<String, Object>> getRegistersForDevice(int testStationId, int startAddress,
-      ModbusDevice modbusDevice, SubDeviceType subDeviceType)
+      ModbusDevice modbusDevice, SubDevice subDevice)
       throws WaitingRoomException, ModbusTransportException, TimeoutException, ModbusDeviceException {
 
     List<Map<String, Object>> allRegisters = new ArrayList<>();
 
-    for (SubDevice subDevice : modbusDevice.getSubDevices()) {
-      if (subDevice.getType().equals(subDeviceType)) {
-        int slaveId = subDevice.getSlaveId();
-        int registersQuantity = subDevice.getRegistersQuantity();
-        List<Map<String, Object>> subDeviceRegisters = null;
 
-        try {
-          // Attempt to read the registers
-          subDeviceRegisters = readHoldingRegisters(testStationId, slaveId, startAddress,
-              registersQuantity, modbusDevice);
-        } catch (ModbusDeviceException e) {
-          String errorMessage = "ModbusDeviceException occurred while reading registers";
-          System.err.println(errorMessage + e.getMessage());
-          Map<String, String> errorResponse = new HashMap<>();
-          errorResponse.put("error", errorMessage);
-          webSocketHandlerCustom.pushDataToClients(errorResponse);
-          throw e;
-        } catch (ModbusTransportException e) {
-          String errorMessage = "Modbus transport error occurred while reading registers: " + e.getMessage();
-          System.err.println(errorMessage);
-          Map<String, String> errorResponse = new HashMap<>();
-          errorResponse.put("error", errorMessage);
-          webSocketHandlerCustom.pushDataToClients(errorResponse);
-          throw e;
-        } catch (TimeoutException e) {
-          String errorMessage = "TimeoutException occurred while reading registers: " + e.getMessage();
-          System.err.println(errorMessage + e.getMessage());
-          Map<String, String> errorResponse = new HashMap<>();
-          errorResponse.put("error", errorMessage);
-          webSocketHandlerCustom.pushDataToClients(errorResponse);
-          throw e;
-        } catch (WaitingRoomException e) {
-          String errorMessage = "WaitingRoomException occurred while reading registers";
-          System.err.println(errorMessage + e.getMessage());
-          Map<String, String> errorResponse = new HashMap<>();
-          errorResponse.put("error", errorMessage);
-          webSocketHandlerCustom.pushDataToClients(errorResponse);
-          throw e;
-        }
+    int slaveId = subDevice.getSlaveId();
+    int registersQuantity = subDevice.getRegistersQuantity();
+    List<Map<String, Object>> subDeviceRegisters = null;
 
-        allRegisters.addAll(subDeviceRegisters);
-      }
+    try {
+      // Attempt to read the registers
+      subDeviceRegisters = readHoldingRegisters(testStationId, slaveId, startAddress,
+          registersQuantity, modbusDevice);
+    } catch (ModbusDeviceException e) {
+      String errorMessage = "ModbusDeviceException occurred while reading registers" + e.getMessage();
+      System.err.println(errorMessage + e.getMessage());
+      Map<String, String> errorResponse = new HashMap<>();
+      errorResponse.put("error", errorMessage);
+      webSocketHandlerCustom.pushDataToClients(errorResponse);
+      throw e;
+    } catch (ModbusTransportException e) {
+      String errorMessage = "Modbus transport error occurred while reading registers: " + e.getMessage();
+      System.err.println(errorMessage);
+      Map<String, String> errorResponse = new HashMap<>();
+      errorResponse.put("error", errorMessage);
+      webSocketHandlerCustom.pushDataToClients(errorResponse);
+      throw e;
+    } catch (TimeoutException e) {
+      String errorMessage = "TimeoutException occurred while reading registers: " + e.getMessage();
+      System.err.println(errorMessage + e.getMessage());
+      Map<String, String> errorResponse = new HashMap<>();
+      errorResponse.put("error", errorMessage);
+      webSocketHandlerCustom.pushDataToClients(errorResponse);
+      throw e;
+    } catch (WaitingRoomException e) {
+      String errorMessage = "WaitingRoomException occurred while reading registers";
+      System.err.println(errorMessage + e.getMessage());
+      Map<String, String> errorResponse = new HashMap<>();
+      errorResponse.put("error", errorMessage);
+      webSocketHandlerCustom.pushDataToClients(errorResponse);
+      throw e;
     }
+
+    allRegisters.addAll(subDeviceRegisters);
+
 
     return allRegisters;
   }
@@ -103,6 +100,7 @@ public class ModbusRegisterService {
       String ipAddress = modbusClientService.getIpAddressFromModbusMaster(mod, testStation);
 
       if (modbusDevice.getIpAddress().equals(ipAddress)) {
+
         boolean success = false;
         int retries = 2; // Retry 2 times before skipping the device
 
@@ -121,7 +119,7 @@ public class ModbusRegisterService {
             retries--;
             if (retries == 0) {
               System.err.println("Device " + ipAddress + " failed after retries.");
-              throw new ModbusDeviceException("Device " + ipAddress + " failed after" + retries);
+              throw new ModbusDeviceException("Device " + ipAddress + " failed after " + retries);
             }
             continue;
           }
@@ -169,3 +167,5 @@ public class ModbusRegisterService {
     return allProcessedRegisters;
   }
 }
+
+
