@@ -1,245 +1,260 @@
-package com.example.backend.service;
+package com.example.backend.service.energy;
 
-import static com.example.backend.enums.EnergyCalculationType.ERZEUGTE_ENERGIE;
-
-import com.example.backend.config.WebSocketHandlerCustom;
+import com.example.backend.config.socket.WebSocketHandlerCustom;
 import com.example.backend.enums.EnergyCalculationType;
 import com.example.backend.enums.SubDeviceType;
+import com.example.backend.exception.EnergyProcessingException;
 import com.example.backend.exception.ModbusDeviceException;
 import com.example.backend.models.ModbusDevice;
 import com.example.backend.models.SubDevice;
 import com.example.backend.models.TestStation;
+import com.example.backend.service.gas.GasService;
 import com.example.backend.service.modbus.ModbusBitwiseService;
-import com.example.backend.service.teststation.DeviceService;
+import com.example.backend.service.teststation.TestStationService;
 import com.serotonin.modbus4j.exception.ModbusTransportException;
 import com.serotonin.modbus4j.sero.messaging.TimeoutException;
 import com.serotonin.modbus4j.sero.messaging.WaitingRoomException;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicReference;
 import lombok.Getter;
+import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicReference;
+
+import static com.example.backend.enums.EnergyCalculationType.COS_PHI;
+import static com.example.backend.enums.EnergyCalculationType.GENERATED_ENERGY;
+
+
+@Slf4j
 @Service
+@Getter
+@Setter
 public class EnergyService {
-  @Getter
-  private final Map<String, Object> firstEnergyResults = new ConcurrentHashMap<>();
-  @Getter
+
+  private final Map<String, Object> initialEnergyResults = new ConcurrentHashMap<>();
   private final Map<String, Object> currentEnergyResults = new ConcurrentHashMap<>();
-  @Getter
   private final Map<String, Object> lastEnergyResults = new ConcurrentHashMap<>();
   private final AtomicReference<Double> energyDifference = new AtomicReference<>(Double.NaN);
-
-
-
+  private final AtomicReference<Long> activePower = new AtomicReference<>(null);
+  private final AtomicReference<Long> apparentPowerReserved = new AtomicReference<>(null);
 
 
   private final ModbusBitwiseService modbusBitwiseService;
-  private final DeviceService deviceService;
+  private final TestStationService testStationService;
   private final WebSocketHandlerCustom webSocketHandlerCustom;
+  private final GasService gasService;
 
 
   @Autowired
-  public EnergyService(ModbusBitwiseService modbusBitwiseService, DeviceService deviceService,
-                       WebSocketHandlerCustom webSocketHandlerCustom) {
+  public EnergyService(ModbusBitwiseService modbusBitwiseService, TestStationService testStationService,
+                       WebSocketHandlerCustom webSocketHandlerCustom, GasService gasService) {
     this.modbusBitwiseService = modbusBitwiseService;
-    this.deviceService = deviceService;
+    this.testStationService = testStationService;
     this.webSocketHandlerCustom = webSocketHandlerCustom;
+    this.gasService = gasService;
+  }
 
-
+  private void formatAndProcess(int testStationId, EnergyCalculationType type, long rawValue, double divisor) {
+    double value = (double) rawValue / divisor;
+    String formattedResult = String.format(Locale.US, "%.2f", value);
+    processAndPushCurrentResults(testStationId, type.name(), formattedResult);
   }
 
 
-
-  public Double getEnergyDifference() {
-    return energyDifference.get();
-  }
-
-  public void clearEnergyDifference() {
-    energyDifference.set(Double.NaN);
-  }
-
-  public void processEnergyData(int deviceId) throws InterruptedException {
-    TestStation testStation = deviceService.getTestStationById(deviceId);
-    for (ModbusDevice modbusDevice : testStation.getModBusDevices()) {
-      List<SubDevice> energySubDevices = modbusDevice.getSubDevices();
-      for (SubDevice subDevice : energySubDevices) {
-        if (subDevice.getType().equals(SubDeviceType.ENERGY)) {
-          List<EnergyCalculationType> energyCalculationTypes = subDevice.getEnergyCalculationTypes();
-
-          long totalStartTime = System.currentTimeMillis();
-          for (EnergyCalculationType energyCalculationType : energyCalculationTypes) {
-            int startAddress = energyCalculationType.getStartAddress(subDevice);
-
-            try {
-              long result;
-              switch (energyCalculationType) {
-                case ERZEUGTE_ENERGIE, GENUTZTE_ENERGIE, WIRKLEISTUNG, FREQUENZ, SPANNUNG_L3_VOLTS,
-                     SPANNUNG_L2_VOLTS, SPANNUNG_L1_VOLTS, SCHEINLEISTUNG_RESERVED,
-                     BLINDLEISTUNG_REACTIVPOWER, STROM:
-
-                  result = modbusBitwiseService.bitwiseShiftCalculation(deviceId, startAddress,
-                          modbusDevice, subDevice);
-
-                  if (energyCalculationType == ERZEUGTE_ENERGIE ||
-                          energyCalculationType == EnergyCalculationType.GENUTZTE_ENERGIE ||
-                          energyCalculationType == EnergyCalculationType.STROM) {
-                    double value = (double) result / 1000;
-                    String formattedResult = String.format(Locale.US, "%.2f", value);
-                    processAndPush(deviceId, energyCalculationType.name(), formattedResult);
-                  } else if (energyCalculationType == EnergyCalculationType.WIRKLEISTUNG ||
-                          energyCalculationType == EnergyCalculationType.BLINDLEISTUNG_REACTIVPOWER ||
-                          energyCalculationType == EnergyCalculationType.SCHEINLEISTUNG_RESERVED) {
-                    double value = (double) result / 10000;
-                    String formattedResult = String.format(Locale.US, "%.2f", value);
-                    processAndPush(deviceId, energyCalculationType.name(), formattedResult);
-
-                  } else {
-                    double value = (double) result / 10;
-                    String formattedResult = String.format(Locale.US, "%.2f", value);
-                    processAndPush(deviceId, energyCalculationType.name(), formattedResult);
-                    break;
-                  }
-
-
-                  break;
-
-                default:
-                  System.out.println("Unhandled EnergyCalculationType: " + energyCalculationType);
-                  return;
+  public void processEnergyData(int testStationId) throws InterruptedException {
+    log.info("Starting energy data processing for TestStation ID: {}", testStationId);
+    TestStation testStation = testStationService.getTestStationById(testStationId);
+    if (testStation == null) {
+      log.warn("No TestStation found for ID: {}", testStationId);
+      return;
+    }
+    for (ModbusDevice modbusDevice : testStation.getModbusDevices()) {
+      for (SubDevice subDevice : modbusDevice.getSubDevices()) {
+        if (!subDevice.getType().equals(SubDeviceType.ENERGY)) {
+          log.debug("Skipping SubDevice with slaveId={}, startAddress={}, type={}",
+                  subDevice.getSlaveId(), subDevice.getStartAddress(), subDevice.getType());
+          continue;
+        }
+        List<EnergyCalculationType> energyCalculationTypes = subDevice.getEnergyCalculationTypes();
+        if (energyCalculationTypes == null) continue;
+        for (EnergyCalculationType energyCalculationType : energyCalculationTypes) {
+          int startAddress = energyCalculationType.getStartAddress(subDevice);
+          try {
+            log.debug("Calculating {} for SubDevice ID: {} at address {}", energyCalculationType.name(), subDevice.getType(), startAddress);
+            long result = modbusBitwiseService.bitwiseShiftCalculation(
+                    testStationId, startAddress, modbusDevice, subDevice);
+            log.info("result for start address {} is {}", startAddress, result);
+            switch (energyCalculationType) {
+              case GENERATED_ENERGY, CONSUMED_ENERGY, CURRENT ->
+                      formatAndProcess(testStationId, energyCalculationType, result, 1000.0);
+              case REACTIVE_POWER_BLIND_POWER ->
+                      formatAndProcess(testStationId, energyCalculationType, result, 10000.0);
+              case ACTIVE_POWER -> {
+                activePower.set(result);
+                formatAndProcess(testStationId, energyCalculationType, result, 10000.0);
               }
-            } catch (ModbusDeviceException ex) {
-              String errorMessage = "ModbusDeviceException error during Modbus calculation for device " + deviceId + " (" + energyCalculationType.name() + "): " + ex.getMessage();
-              System.err.println(errorMessage);
-              Thread.currentThread().interrupt();
-              return;
-            } catch (WaitingRoomException e) {
-              System.err.println("WaitingRoomException while processing gas data for device " + deviceId + ": " + e.getMessage());
-              Thread.currentThread().interrupt();
-              return;
-            } catch (TimeoutException e) {
-              System.err.println("TimeoutException while processing gas data for device " + deviceId + ": " + e.getMessage());
-              Thread.currentThread().interrupt();
-              return;
-            } catch (IllegalStateException ex) {
-              String errorMessage = "Error during Modbus calculation for device " + deviceId + " (" + energyCalculationType.name() + "): " + ex.getMessage();
-              System.err.println(errorMessage);
-              Thread.currentThread().interrupt();
-              return;
-            } catch (ModbusTransportException e) {
-              String errorMessage = "ModbusTransportException  " + deviceId + " (" + energyCalculationType.name() + "): " + e.getMessage();
-              System.err.println(errorMessage);
-              Thread.currentThread().interrupt();
-              return;
-            } catch (Exception ex) {
-              String errorMessage = "Unexpected error during Modbus calculation for device " + deviceId + " (" + energyCalculationType.name() + "): " + ex.getMessage();
-              System.err.println(errorMessage);
-              Thread.currentThread().interrupt();
-              return;
+              case APPARENT_POWER_RESERVED -> {
+                apparentPowerReserved.set(result);
+                formatAndProcess(testStationId, energyCalculationType, result, 10000.0);
+              }
+              case FREQUENCY, VOLTAGE_L1_VOLTS, VOLTAGE_L2_VOLTS, VOLTAGE_L3_VOLTS ->
+                      formatAndProcess(testStationId, energyCalculationType, result, 10.0);
+              default -> log.warn("Unhandled EnergyCalculationType: {}", energyCalculationType);
             }
+
+          } catch (InterruptedException ie) {
+            log.warn("Thread interrupted during energy data processing for testStationId {}", testStationId, ie);
+            Thread.currentThread().interrupt(); // preserve interrupt status
+            throw ie; // propagate InterruptedException
+          } catch (ModbusDeviceException | WaitingRoomException | TimeoutException |
+                   IllegalStateException | ModbusTransportException ex) {
+            log.error("Exception [{} - {}]: {}", energyCalculationType.name(), testStationId, ex.getMessage(), ex);
+            throw new EnergyProcessingException("Critical failure in energy processing", ex);
+          } catch (Exception ex) {
+            log.error("Unexpected exception [{} - {}]: {}", energyCalculationType.name(), testStationId, ex.getMessage(), ex);
+            Thread.currentThread().interrupt();
+            throw new InterruptedException("Thread interrupted due to exception: " + ex.getMessage());
           }
-          long totalEndTime = System.currentTimeMillis();  // End timing after loop
-          System.out.println("Total time to implement all switch tasks for Energy: " + (totalEndTime - totalStartTime) + " ms");
+        }
+        // Now calculate cos_phi after switch
+        long ap = activePower.get();
+        long apr = apparentPowerReserved.get();
+
+        if (apr != 0 && ap != 0) {
+          double resultCosPhi = (double) ap / apr;
+          String formattedCosPhi = String.format(Locale.US, "%.2f", resultCosPhi);
+          log.info("Calculated cos_phi: {}", formattedCosPhi);
+          processAndPushCurrentResults(testStationId, COS_PHI.name(), formattedCosPhi);
+        } else {
+          log.warn("Apparent Power or Active Power is zero, cannot calculate cos_phi");
         }
       }
     }
   }
 
 
-  public void processAndPush(int deviceId, String key, Object value) {
-    System.out.println("Processing value: Key = " + key + ", Value = " + value + ", DeviceId = " + deviceId);
-    boolean valueChanged = !lastEnergyResults.containsKey(key);
+  private void processAndPushCurrentResults(int testStationId, String key, Object value) {
+    log.debug("Processing value: Key = {}, Value = {}, testStationId = {}", key, value, testStationId);
+    try {
+      Object lastValue = lastEnergyResults.get(key); // at the beginning its null after value for the specific key
+      log.debug("🔎 Previous value for key '{}': {}", key, lastValue);
+      boolean valueChanged = (lastValue == null || !lastValue.equals(value));
+      log.debug("🗂 Before update - currentChpResults[{}]: {}", key, currentEnergyResults.get(key));
 
-    currentEnergyResults.put(key, value);
-    lastEnergyResults.putIfAbsent(key, value);
+      currentEnergyResults.put(key, value);
+      log.debug("📌 After update - currentChpResults[{}]: {}", key, currentEnergyResults.get(key));
 
-    if (!currentEnergyResults.get(key).equals(lastEnergyResults.get(key))) {
-      lastEnergyResults.put(key, value);
-      valueChanged = true;
-    }
-
-    if (valueChanged) {
-      Map<String, Object> update = new LinkedHashMap<>();
-      update.put(key, currentEnergyResults.get(key));
-      update.put("deviceId", deviceId);
-
-      if (!webSocketHandlerCustom.getConnectedSessions().isEmpty()) {
-        try {
-          System.out.println("Enqueuing data: " + update);
+      if (valueChanged) { // true means lastEnergyResults empty or the value differs
+        lastEnergyResults.put(key, value);
+        Map<String, Object> update = new LinkedHashMap<>();
+        update.put(key, value);
+        update.put("testStationId", testStationId);
+        log.debug("✅ Value changed, enqueuing update: {}", update);
+        if (!webSocketHandlerCustom.getConnectedSessions().isEmpty()) {
           webSocketHandlerCustom.enqueueUpdate(update);
-        } catch (Exception e) {
-          System.err.println("Error while enqueuing WebSocket update: " + e.getMessage());
         }
       } else {
-        System.out.println("WebSocket session is no longer available. Skipping WebSocket push.");
+        log.debug("Value did not change, skipping push for key: {}, testStationId: {}", key, testStationId);
       }
-
-    } else {
-      System.out.println("Value did not change, skipping push: " + key);
+    } catch (Exception e) {
+      log.error("Unexpected error in energy  processAndPush for key: {}, testStationId: {} - {}", key, testStationId, e.getMessage(), e);
     }
   }
 
-  public void calculateAndPushEnergyDifference(int deviceId) throws InterruptedException {
-    List<SubDevice> energySubDevices = deviceService.getSubDevicesByType(deviceId,
-            SubDeviceType.ENERGY);
-    for (SubDevice subDevice : energySubDevices) {
-      List<EnergyCalculationType> energyCalculationTypes = subDevice.getEnergyCalculationTypes();
-      for (EnergyCalculationType energyCalculationType : energyCalculationTypes) {
-        if (energyCalculationType.equals(ERZEUGTE_ENERGIE)) {
+  public void calculateAndPushEnergyDifference(int testStationId) throws InterruptedException {
+    log.info("Calculating energy difference for testStationId: {}", testStationId);
+    log.info("Waiting for gasService to populate first results before calculating energy difference for testStationId: {}", testStationId);
 
-          String key = energyCalculationType.name();
-          if (currentEnergyResults.get(key) != null && firstEnergyResults.get(key) != null) {
+    if (!gasService.getIsInitialResultsPopulated().get()) {
+      return;
+    }
+    try {
+      List<SubDevice> energySubDevices = testStationService.getSubDevicesByType(testStationId, SubDeviceType.ENERGY);
 
+      if (energySubDevices == null || energySubDevices.isEmpty()) {
+        log.warn("No ENERGY SubDevices found for testStationId: {}", testStationId);
+        return;
+      }
 
-            if (!currentEnergyResults.get(key).equals(firstEnergyResults.get(key))) {
-              double currentResult = Double.parseDouble(currentEnergyResults.get(key).toString());
-              System.out.println("current result for ERZEUGTE_ENERGIE " + currentResult);
-              double previousResult = Double.parseDouble(firstEnergyResults.get(key).toString());
-              System.out.println("previous result for ERZEUGTE_ENERGIE " + previousResult);
-              double difference = currentResult - previousResult;
+      for (SubDevice subDevice : energySubDevices) {
+        List<EnergyCalculationType> types = subDevice.getEnergyCalculationTypes();
 
-              if (!Double.isNaN(difference) && !Double.isInfinite(difference)) {
-                energyDifference.set(difference);
+        if (types == null || types.isEmpty()) {
+          log.debug("No EnergyCalculationTypes for SubDevice [slaveId={}, startAddress={}, type={}]",
+                  subDevice.getSlaveId(), subDevice.getStartAddress(), subDevice.getType());
+          continue;
+        }
 
-              }
+        for (EnergyCalculationType type : types) {
+          if (type != GENERATED_ENERGY) continue;
 
-              System.out.println("difference for ERZEUGTE_ENERGIE " + difference);
+          String key = type.name();
+          Object current = currentEnergyResults.get(key);
+          Object first = initialEnergyResults.get(key);
 
-              Map<String, Object> update = new LinkedHashMap<>();
-              update.put(key, String.format(Locale.US, "%.2f", energyDifference.get()));
-              update.put("deviceId", deviceId);
-              update.put("difference", key);
-              // Re-check WebSocket session availability before pushing data
-              if (!webSocketHandlerCustom.getConnectedSessions().isEmpty()) {
-                try {
-                  System.out.println("Enqueuing data: " + update);
-                  webSocketHandlerCustom.enqueueUpdate(update);
-                } catch (Exception e) {
-                  System.err.println("Error while enqueuing WebSocket update: " + e.getMessage());
-                }
-              } else {
-                System.out.println("WebSocket session is no longer available. Skipping WebSocket push.");
-              }
+          if (current == null || first == null || current.equals(first)) continue;
 
+          try {
+            double currentVal = parseDouble(current);
+            double firstVal = parseDouble(first);
+            double diff = currentVal - firstVal;
+
+            log.info("Current [{}]: {}, First [{}]: {}, Difference: {}", key, currentVal, key, firstVal, diff);
+
+            if (!Double.isNaN(diff) && !Double.isInfinite(diff)) {
+              energyDifference.set(diff);
             }
+
+            Map<String, Object> update = new LinkedHashMap<>();
+            update.put(key, String.format(Locale.US, "%.2f", energyDifference.get()));
+            update.put("testStationId", testStationId);
+            update.put("difference", key);
+
+            if (!webSocketHandlerCustom.getConnectedSessions().isEmpty()) {
+              webSocketHandlerCustom.enqueueUpdate(update);
+            }
+
+          } catch (NumberFormatException nfe) {
+            log.error("Invalid number format for key {}: {}", key, nfe.getMessage(), nfe);
           }
         }
       }
+    } catch (Exception e) {
+      log.error("Failed to calculate energy difference for testStationId {}: {}", testStationId, e.getMessage(), e);
+      Thread.currentThread().interrupt();
+      throw new InterruptedException("Thread interrupted due to exception: " + e.getMessage());
     }
   }
 
-  public Map<String, Object> startResults(int deviceId) {
-    firstEnergyResults.putAll(currentEnergyResults);
 
-    return firstEnergyResults;
+
+  private double parseDouble(Object value) throws NumberFormatException {
+    return (value instanceof Number) ? ((Number) value).doubleValue() : Double.parseDouble(value.toString());
   }
 
-  public Map<String, Object> lastResults(int deviceId) {
-    return lastEnergyResults;
+
+  public synchronized Map<String, Object> getStartEnergyResults(int testStationId) {
+    log.debug("Saving current energy results as start results for testStationId: {}", testStationId);
+    initialEnergyResults.putAll(currentEnergyResults);
+    return new HashMap<>(initialEnergyResults);  // return a copy
+  }
+
+  public Map<String, Object> getLastEnergyResults(int testStationId) {
+    log.debug("Fetching last energy results for testStationId: {}", testStationId);
+    return new HashMap<>(lastEnergyResults);  // return a safe copy, no sync needed
+  }
+
+
+  public synchronized void clearEnergyResults() {
+    initialEnergyResults.clear();
+    currentEnergyResults.clear();
+    lastEnergyResults.clear();
+    energyDifference.set(Double.NaN);
+    activePower.set(null);
+    apparentPowerReserved.set(null);
   }
 }
 

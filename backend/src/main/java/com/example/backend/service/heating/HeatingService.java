@@ -1,257 +1,247 @@
 package com.example.backend.service.heating;
 
-import static com.example.backend.enums.HeatingCalculationType.ERZEUGTE_ENERGIE_HEATING;
-
-import com.example.backend.config.WebSocketHandlerCustom;
+import com.example.backend.config.socket.WebSocketHandlerCustom;
 import com.example.backend.enums.HeatingCalculationType;
 import com.example.backend.enums.SubDeviceType;
+import com.example.backend.exception.HeatingProcessingException;
 import com.example.backend.exception.ModbusDeviceException;
 import com.example.backend.models.ModbusDevice;
 import com.example.backend.models.SubDevice;
 import com.example.backend.models.TestStation;
-
+import com.example.backend.service.gas.GasService;
 import com.example.backend.service.modbus.ModbusBitwiseService;
-import com.example.backend.service.teststation.DeviceService;
+import com.example.backend.service.teststation.TestStationService;
 import com.serotonin.modbus4j.exception.ModbusTransportException;
 import com.serotonin.modbus4j.sero.messaging.TimeoutException;
 import com.serotonin.modbus4j.sero.messaging.WaitingRoomException;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicReference;
 import lombok.Getter;
+import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicReference;
+
+import static com.example.backend.enums.HeatingCalculationType.GENERATED_ENERGY_HEATING;
+
+
+@Slf4j
 @Service
+@Getter
+@Setter
 public class HeatingService {
-
-  @Getter
-  private final Map<String, Object> firstHeatingResults = new ConcurrentHashMap<>();
-  @Getter
+  private final Map<String, Object> initialHeatingResults = new ConcurrentHashMap<>();
   private final Map<String, Object> currentHeatingResults = new ConcurrentHashMap<>();
-  @Getter
   private final Map<String, Object> lastHeatingResults = new ConcurrentHashMap<>();
-
-
   private final AtomicReference<Double> heatingDifference = new AtomicReference<>(Double.NaN);
 
-
-  private final WebSocketHandlerCustom webSocketHandlerCustom;
-
-
   private final ModbusBitwiseService modbusBitwiseService;
-  private final DeviceService deviceService;
+  private final TestStationService testStationService;
+  private final WebSocketHandlerCustom webSocketHandlerCustom;
+  private final GasService gasService;
 
-  public HeatingService(WebSocketHandlerCustom webSocketHandlerCustom,
-                        ModbusBitwiseService modbusBitwiseService, DeviceService deviceService) {
+  @Autowired
+  public HeatingService(WebSocketHandlerCustom webSocketHandlerCustom, ModbusBitwiseService modbusBitwiseService, TestStationService testStationService, GasService gasService) {
     this.webSocketHandlerCustom = webSocketHandlerCustom;
     this.modbusBitwiseService = modbusBitwiseService;
-    this.deviceService = deviceService;
+    this.testStationService = testStationService;
+    this.gasService = gasService;
+  }
+
+  private void formatAndProcess(int testStationId, HeatingCalculationType type, long rawValue, double divisor) {
+    double value = (double) rawValue / divisor;
+    String formattedResult = String.format(Locale.US, "%.2f", value);
+    processAndPushCurrentResults(testStationId, type.name(), formattedResult);
   }
 
 
-
-  public Double getHeatingDifference() {
-    return heatingDifference.get();
-  }
-
-  public void clearHeatingDifference() {
-    heatingDifference.set(Double.NaN);
-  }
-
-
-
-  public void processHeatingData(int deviceId) throws InterruptedException{
-    TestStation testStation = deviceService.getTestStationById(deviceId);
-
-    if (!hasHeatingSubDevice(deviceId)) {
-      System.out.println("No HEATING subdevice found for deviceId: " + deviceId + ". Skipping processHeatingData.");
+  public void processHeatingData(int testStationId) throws InterruptedException {
+    if (hasHeatingSubDevice(testStationId)) {
+      log.info("No HEATING subdevice found for testStationId: {}. Skipping processHeatingData.", testStationId);
       return;
     }
 
+    log.info("Starting heating data processing for TestStation ID: {}", testStationId);
+    TestStation testStation = testStationService.getTestStationById(testStationId);
+    if (testStation == null) {
+      log.warn("No TestStation found for testStationId: {}", testStationId);
+      return;
+    }
 
-    for (ModbusDevice modbusDevice : testStation.getModBusDevices()) {
-      List<SubDevice> heatingSubDevices = modbusDevice.getSubDevices();
-      for (SubDevice subDevice : heatingSubDevices) {
-        if (subDevice.getType().equals(SubDeviceType.HEATING)) {
-          List<HeatingCalculationType> heatingCalculationTypes = subDevice.getHeatingCalculationTypes();
+    for (ModbusDevice modbusDevice : testStation.getModbusDevices()) {
+      for (SubDevice subDevice : modbusDevice.getSubDevices()) {
+        if (!SubDeviceType.HEATING.equals(subDevice.getType())) {
+          log.debug("Skipping SubDevice of type {}", subDevice.getType());
+          continue;
+        }
 
-          long totalStartTime = System.currentTimeMillis();
-          for (HeatingCalculationType heatingCalculationType : heatingCalculationTypes) {
-            int startAddress = heatingCalculationType.getStartAddress(subDevice);
-
-            try {
-              long result;
-              switch (heatingCalculationType) {
-                case ERZEUGTE_ENERGIE_HEATING, VORLAUFTEMPERATUR, VOLUMENSTROM, TEMPERATURDIFFERENZ,
-                     LEISTUNG, GESAMT_VOLUMEN, RuCKLAUFTEMPERATUR:
-
-                  result = modbusBitwiseService.bitwiseShiftCalculation(deviceId, startAddress, modbusDevice, subDevice);
-
-                  System.out.println("Calculated Value: " + heatingCalculationType.name() + " = " + result);
-                  if (heatingCalculationType == HeatingCalculationType.VORLAUFTEMPERATUR ||
-                          heatingCalculationType == HeatingCalculationType.TEMPERATURDIFFERENZ ||
-                          heatingCalculationType == HeatingCalculationType.RuCKLAUFTEMPERATUR
-                  ) {
-                    double value = (double) result / 100;
-                    String formattedResult = String.format(Locale.US, "%.2f", value);
-                    processAndPush(deviceId, heatingCalculationType.name(), formattedResult);
-
-                  } else if (heatingCalculationType == HeatingCalculationType.GESAMT_VOLUMEN ||
-                          heatingCalculationType == HeatingCalculationType.LEISTUNG) {
-                    double value = (double) result / 1000;
-                    String formattedResult = String.format(Locale.US, "%.2f", value);
-                    processAndPush(deviceId, heatingCalculationType.name(), formattedResult);
-                  } else if (heatingCalculationType == HeatingCalculationType.VOLUMENSTROM) {
-                    double value = (double) result / 60;
-                    String formattedResult = String.format(Locale.US, "%.2f", value);
-                    processAndPush(deviceId, heatingCalculationType.name(), formattedResult);
-                  } else {
-                    processAndPush(deviceId, heatingCalculationType.name(), result);
-                  }
-
-
-                  break;
-                default:
-                  System.out.println("Unhandled heatingCalculationType: " + heatingCalculationType);
-                  return;
-              }
-            } catch (ModbusDeviceException ex) {
-              String errorMessage = "ModbusDeviceException error during Modbus calculation for device " + deviceId + " (" + heatingCalculationType.name() + "): " + ex.getMessage();
-              System.err.println(errorMessage);
-              Thread.currentThread().interrupt();
-            } catch (WaitingRoomException e) {
-              System.err.println("WaitingRoomException while processing gas data for device " + deviceId + ": " + e.getMessage());
-              Thread.currentThread().interrupt();
-            } catch (TimeoutException e) {
-              System.err.println("TimeoutException while processing gas data for device " + deviceId + ": " + e.getMessage());
-              Thread.currentThread().interrupt();
-            } catch (IllegalStateException ex) {
-              String errorMessage = "Error during Modbus calculation for device " + deviceId + " (" + heatingCalculationType.name() + "): " + ex.getMessage();
-              System.err.println(errorMessage);
-              Thread.currentThread().interrupt();
-            } catch (ModbusTransportException e) {
-              String errorMessage = "ModbusTransportException  " + deviceId + " (" + heatingCalculationType.name() + "): " + e.getMessage();
-              System.err.println(errorMessage);
-              Thread.currentThread().interrupt();
-
-            } catch (Exception ex) {
-              String errorMessage = "Unexpected error during Modbus calculation for device " + deviceId + " (" + heatingCalculationType.name() + "): " + ex.getMessage();
-              System.err.println(errorMessage);
-              Thread.currentThread().interrupt();
+        List<HeatingCalculationType> heatingCalculationTypes = subDevice.getHeatingCalculationTypes();
+        if (heatingCalculationTypes == null) continue;
+        for (HeatingCalculationType heatingCalculationType : heatingCalculationTypes) {
+          int startAddress = heatingCalculationType.getStartAddress(subDevice);
+          try {
+            log.debug("Calculating {} for SubDevice ID: {} at address {}", heatingCalculationType.name(), subDevice.getType(), startAddress);
+            long result = modbusBitwiseService.bitwiseShiftCalculation(testStationId, startAddress, modbusDevice, subDevice);
+            log.info("result for start address {} is {}", startAddress, result);
+            switch (heatingCalculationType) {
+              case TEMPERATURE_DIFFERENCE ->
+                      formatAndProcess(testStationId, heatingCalculationType, result, 100.0);
+              case TOTAL_VOLUME, POWER ->
+                      formatAndProcess(testStationId, heatingCalculationType, result, 1000.0);
+              case VOLUME_FLOW -> formatAndProcess(testStationId, heatingCalculationType, result, 60.0);
+              case GENERATED_ENERGY_HEATING, RETURN_TEMPERATURE, SUPPLY_TEMPERATURE ->
+                      processAndPushCurrentResults(testStationId, heatingCalculationType.name(), result);
+              default -> log.warn("Unhandled HeatingCalculationType: {}", heatingCalculationType);
             }
-
+          } catch (ModbusDeviceException | WaitingRoomException | TimeoutException | IllegalStateException |
+                   ModbusTransportException ex) {
+            log.error("Exception [{} - {}]: {}", heatingCalculationType.name(), testStationId, ex.getMessage(), ex);
+            Thread.currentThread().interrupt();
+            throw new HeatingProcessingException("Critical failure in energy processing", ex);
+          } catch (Exception ex) {
+            log.error("Unexpected exception [{} - {}]: {}", heatingCalculationType.name(), testStationId, ex.getMessage(), ex);
+            Thread.currentThread().interrupt();
+            throw new InterruptedException("Thread interrupted due to exception: " + ex.getMessage());
           }
-          long totalEndTime = System.currentTimeMillis();  // End timing after loop
-          System.out.println("Total time to implement all switch tasks for Heating: " + (totalEndTime - totalStartTime) + " ms");
-
         }
       }
-
     }
   }
 
 
-  public boolean hasHeatingSubDevice(int deviceId) {
-    TestStation testStation = deviceService.getTestStationById(deviceId);
-    return testStation.getModBusDevices().stream()
-            .flatMap(modbusDevice -> modbusDevice.getSubDevices().stream())
-            .anyMatch(subDevice -> subDevice.getType() == SubDeviceType.HEATING);
+  public boolean hasHeatingSubDevice(int testStationId) {
+    TestStation testStation = testStationService.getTestStationById(testStationId);
+    if (testStation == null) return true;
+    return testStation.getModbusDevices().stream().flatMap(md -> md.getSubDevices().stream()).noneMatch(sd -> sd.getType() == SubDeviceType.HEATING);
   }
 
 
-  public void processAndPush(int deviceId, String key, Object value) {
-    System.out.println("Processing value: Key = " + key + ", Value = " + value + ", DeviceId = " + deviceId);
+  public void processAndPushCurrentResults(int testStationId, String key, Object value) {
+    log.debug("Processing value: Key = {}, Value = {}, testStationId = {}", key, value, testStationId);
+    try {
+      Object lastValue = lastHeatingResults.get(key);
+      log.debug("🔎 Previous value for key '{}': {}", key, lastValue);
 
-    boolean valueChanged = !lastHeatingResults.containsKey(key);
+      boolean valueChanged = (lastValue == null || !lastValue.equals(value));
 
-    currentHeatingResults.put(key, value);
-    lastHeatingResults.putIfAbsent(key, value);
+      log.debug("🗂 Before update - currentChpResults[{}]: {}", key, currentHeatingResults.get(key));
 
-    if (!currentHeatingResults.get(key).equals(lastHeatingResults.get(key))) {
-      lastHeatingResults.put(key, value);
-      valueChanged = true;
-    }
+      currentHeatingResults.put(key, value);
+      log.debug("📌 After update - currentChpResults[{}]: {}", key, currentHeatingResults.get(key));
 
-    if (valueChanged) {
-      Map<String, Object> update = new LinkedHashMap<>();
-      update.put(key, currentHeatingResults.get(key));
-      update.put("deviceId", deviceId);
+      if (valueChanged) {
+        lastHeatingResults.put(key, value);
+        Map<String, Object> update = new LinkedHashMap<>();
+        update.put(key, value);
+        update.put("testStationId", testStationId);
 
-      if (!webSocketHandlerCustom.getConnectedSessions().isEmpty()) {
-        try {
-          System.out.println("Enqueuing data: " + update);
+        if (!webSocketHandlerCustom.getConnectedSessions().isEmpty()) {
           webSocketHandlerCustom.enqueueUpdate(update);
-        } catch (Exception e) {
-          System.err.println("Error while enqueuing WebSocket update: " + e.getMessage());
         }
       } else {
-        System.out.println("WebSocket session is no longer available. Skipping WebSocket push.");
+        log.debug("Heating value did not change, skipping push for key: {}, testStationId: {}", key, testStationId);
       }
-
-
-    } else {
-      System.out.println("Value did not change, skipping push: " + key);
+    } catch (Exception e) {
+      log.error("Unexpected error in heating processAndPush for key: {}, testStationId: {} - {}", key, testStationId, e.getMessage(), e);
     }
-
   }
 
 
-  public void calculateAndPushHeatingDifference(int deviceId) throws InterruptedException {
-    List<SubDevice> heatingSubDevices = deviceService.getSubDevicesByType(deviceId,
-            SubDeviceType.HEATING);
-    for (SubDevice subDevice : heatingSubDevices) {
-      List<HeatingCalculationType> heatingCalculationTypes = subDevice.getHeatingCalculationTypes();
-      for (HeatingCalculationType heatingCalculationType : heatingCalculationTypes) {
-        if (heatingCalculationType.equals(ERZEUGTE_ENERGIE_HEATING)) {
+  public void calculateAndPushHeatingDifference(int testStationId) throws InterruptedException {
+    log.info("Calculating heating difference for testStationId: {}", testStationId);
+    log.info("Waiting for gasService to populate first results before calculating heating difference for testStationId: {}", testStationId);
+    if (!gasService.getIsInitialResultsPopulated().get()) {
+      return;
+    }
 
-          String key = heatingCalculationType.name();
-          if (currentHeatingResults.get(key) != null && firstHeatingResults.get(key) != null) {
+    try {
+      List<SubDevice> heatingSubDevices = testStationService.getSubDevicesByType(testStationId, SubDeviceType.HEATING);
+
+      if (heatingSubDevices == null || heatingSubDevices.isEmpty()) {
+        log.warn("No Heating SubDevices found for testStationId: {}", testStationId);
+        return;
+      }
+
+      for (SubDevice subDevice : heatingSubDevices) {
+        List<HeatingCalculationType> types = subDevice.getHeatingCalculationTypes();
+        if (types == null || types.isEmpty()) {
+          log.debug("No HeatingCalculationTypes for SubDevice [slaveId={}, startAddress={}, type={}]", subDevice.getSlaveId(), subDevice.getStartAddress(), subDevice.getType());
+          continue;
+        }
 
 
-            if (!currentHeatingResults.get(key).equals(firstHeatingResults.get(key))) {
-              double currentResult = Double.parseDouble(currentHeatingResults.get(key).toString());
-              double previousResult = Double.parseDouble(firstHeatingResults.get(key).toString());
-              double difference = currentResult - previousResult;
+        for (HeatingCalculationType type : types) {
+          if (type != GENERATED_ENERGY_HEATING) continue;
 
-              if (!Double.isNaN(difference) && !Double.isInfinite(difference)) {
-                heatingDifference.set(difference);
+          String key = type.name();
+          Object current = currentHeatingResults.get(key);
+          Object first = initialHeatingResults.get(key);
 
+
+          if (current == null || first == null || current.equals(first)) continue;
+
+
+          if (currentHeatingResults.get(key) != null && initialHeatingResults.get(key) != null) {
+
+            try {
+              double currentVal = parseDouble(current);
+              double firstVal = parseDouble(first);
+              double diff = currentVal - firstVal;
+
+
+              log.info("Current [{}]: {}, First [{}]: {}, Difference: {}", key, currentVal, key, firstVal, diff);
+              if (!Double.isNaN(diff) && !Double.isInfinite(diff)) {
+                heatingDifference.set(diff);
               }
 
 
               Map<String, Object> update = new LinkedHashMap<>();
               update.put(key, String.format(Locale.US, "%.2f", heatingDifference.get()));
-              update.put("deviceId", deviceId);
+              update.put("testStationId", testStationId);
               update.put("difference", key);
-              // Re-check WebSocket session availability before pushing data
+
               if (!webSocketHandlerCustom.getConnectedSessions().isEmpty()) {
-                try {
-                  System.out.println("Enqueuing data: " + update);
-                  webSocketHandlerCustom.enqueueUpdate(update);
-                } catch (Exception e) {
-                  System.err.println("Error while enqueuing WebSocket update: " + e.getMessage());
-                }
-              } else {
-                System.out.println("WebSocket session is no longer available. Skipping WebSocket push.");
+                webSocketHandlerCustom.enqueueUpdate(update);
               }
 
+            } catch (NumberFormatException nfe) {
+              log.error("Invalid number format for key {}: {}", key, nfe.getMessage(), nfe);
             }
           }
         }
       }
+    } catch (Exception e) {
+      log.error("Failed to calculate heating difference for testStationId {}: {}", testStationId, e.getMessage(), e);
+      Thread.currentThread().interrupt();
+      throw new InterruptedException("Thread interrupted due to exception: " + e.getMessage());
     }
   }
 
-  public Map<String, Object> startResults(int deviceId) {
-    firstHeatingResults.putAll(currentHeatingResults);
-    return firstHeatingResults;
+
+  private double parseDouble(Object value) throws NumberFormatException {
+    return (value instanceof Number) ? ((Number) value).doubleValue() : Double.parseDouble(value.toString());
   }
 
-  public Map<String, Object> lastResults(int deviceId) {
-    return lastHeatingResults;
+
+  public synchronized Map<String, Object> getStartHeatingResults(int testStationId) {
+    log.debug("Saving current heating results as start results for testStationId: {}", testStationId);
+    initialHeatingResults.putAll(currentHeatingResults);
+    return new HashMap<>(initialHeatingResults);
+  }
+
+  public Map<String, Object> getLastHeatingResults(int testStationId) {
+    log.debug("Fetching last heating results for testStationId: {}", testStationId);
+    return new HashMap<>(lastHeatingResults);
+  }
+
+  public synchronized void clearHeatingResults() {
+    initialHeatingResults.clear();
+    currentHeatingResults.clear();
+    lastHeatingResults.clear();
+    heatingDifference.set(Double.NaN);
   }
 }
+
 

@@ -1,43 +1,42 @@
 package com.example.backend.service.teststation;
 
-import com.example.backend.config.DeviceConfig;
+import com.example.backend.config.TestStationConfig;
 import com.example.backend.enums.SubDeviceType;
-import com.example.backend.exception.DeviceNotFoundException;
+import com.example.backend.exception.TestStationNotFoundException;
 import com.example.backend.models.ModbusDevice;
 import com.example.backend.models.SubDevice;
 import com.example.backend.models.TestStation;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+
 import java.util.ArrayList;
 import java.util.List;
 
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-
 @Slf4j
 @Service
-public class DeviceService {
-  private final DeviceConfig deviceConfig;
+public class TestStationService {
 
-  @Autowired
-  public DeviceService(DeviceConfig deviceConfig) {
-    this.deviceConfig = deviceConfig;
+  private final TestStationConfig testStationConfig;
+
+  public TestStationService(TestStationConfig testStationConfig) {
+    this.testStationConfig = testStationConfig;
   }
 
   public List<TestStation> getAllTestStations() {
     log.info("Fetching all test stations.");
-    return deviceConfig.getTestStations();
+    return testStationConfig.getTestStations();
   }
 
 
   public TestStation getTestStationById(int testStationId) {
     log.debug("Searching for TestStation with ID: {}", testStationId);
 
-    return deviceConfig.getTestStations().stream()
+    return testStationConfig.getTestStations().stream()
             .filter(station -> station.getId() == testStationId)
             .findFirst()
             .orElseThrow(() -> {
               log.warn("TestStation with ID {} not found", testStationId);
-              return new DeviceNotFoundException("TestStation with id " + testStationId + " not found");
+              return new TestStationNotFoundException("TestStation with id " + testStationId + " not found");
             });
   }
 
@@ -48,7 +47,7 @@ public class DeviceService {
     TestStation testStation = getTestStationById(testStationId);  // already logs & throws if not found
 
     List<SubDevice> subDevices = new ArrayList<>();
-    for (ModbusDevice modbusDevice : testStation.getModBusDevices()) {
+    for (ModbusDevice modbusDevice : testStation.getModbusDevices()) {
       for (SubDevice subDevice : modbusDevice.getSubDevices()) {
         if (subDevice.getType() == subDeviceType) {
           subDevices.add(subDevice);

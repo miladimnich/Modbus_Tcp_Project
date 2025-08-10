@@ -1,0 +1,876 @@
+{
+  "ASV_14": {
+    "ACTIVE_POWER": {
+      "min": 13.3,
+      "target": 14,
+      "max": 14.7
+    },
+    "REACTIVE_POWER_BLIND_POWER": {
+      "min": 0,
+      "target": 0,
+      "max": 100
+    },
+    "APPARENT_POWER_RESERVED": {
+      "min": 0,
+      "target": 0,
+      "max": 100
+    },
+    "CURRENT": {
+      "min": 0,
+      "target": 0,
+      "max": 100
+    },
+    "SUPPLY_TEMPERATURE": {
+      "min": 0,
+      "target": 0,
+      "max": 100
+    },
+    "VOLUME_FLOW": {
+      "min": 21,
+      "target": 23,
+      "max": 26
+    },
+    "POWER": {
+      "min": 27.5,
+      "target": 29,
+      "max": 30.5
+    },
+    "RETURN_TEMPERATURE": {
+      "min": 52,
+      "target": 55,
+      "max": 58
+    },
+    "EXHAUST_TEMPERATURE": {
+      "min": 0,
+      "target": 0,
+      "max": 100
+    },
+    "HEATING_WATER_FLOW": {
+      "min": 0,
+      "target": 0,
+      "max": 100
+    },
+    "HEATING_WATER_RETURN": {
+      "min": 0,
+      "target": 0,
+      "max": 100
+    },
+    "ENGINE_COOLANT_RETURN": {
+      "min": 0,
+      "target": 0,
+      "max": 100
+    },
+    "ENGINE_COOLANT_FLOW": {
+      "min": 0,
+      "target": 0,
+      "max": 100
+    },
+    "CONTROL_CABINET": {
+      "min": 0,
+      "target": 0,
+      "max": 100
+    },
+    "HOUSING": {
+      "min": 0,
+      "target": 0,
+      "max": 100
+    },
+    "GENERATOR_WINDING": {
+      "min": 0,
+      "target": 0,
+      "max": 100
+    },
+    "ENGINE_OIL": {
+      "min": 0,
+      "target": 0,
+      "max": 100
+    },
+    "ELECTRICAL_EFFICIENCY": {
+      "min": 29.5,
+      "target": 31.1,
+      "max": 32.7
+    },
+    "THERMAL_EFFICIENCY": {
+      "min": 61.8,
+      "target": 65,
+      "max": 68.3
+    },
+    "OVERALL_EFFICIENCY": {
+      "min": 91.3,
+      "target": 96.1,
+      "max": 100.9
+    },
+    "COS_PHI": {
+      "min": 0.93,
+      "target": 0.95,
+      "max": 1.0
+    }
+  },
+  "ASV_15": {
+    "ACTIVE_POWER": {
+      "min": 14.3,
+      "target": 15,
+      "max": 15.8
+    },
+    "REACTIVE_POWER_BLIND_POWER": {
+      "min": 0,
+      "target": 0,
+      "max": 100
+    },
+    "APPARENT_POWER_RESERVED": {
+      "min": 0,
+      "target": 0,
+      "max": 100
+    },
+    "CURRENT": {
+      "min": 0,
+      "target": 0,
+      "max": 100
+    },
+    "SUPPLY_TEMPERATURE": {
+      "min": 0,
+      "target": 0,
+      "max": 100
+    },
+    "VOLUME_FLOW": {
+      "min": 21,
+      "target": 23,
+      "max": 26
+    },
+    "POWER": {
+      "min": 29.4,
+      "target": 31,
+      "max": 32.6
+    },
+    "RETURN_TEMPERATURE": {
+      "min": 52,
+      "target": 55,
+      "max": 58
+    },
+    "EXHAUST_TEMPERATURE": {
+      "min": 0,
+      "target": 0,
+      "max": 100
+    },
+    "HEATING_WATER_FLOW": {
+      "min": 0,
+      "target": 0,
+      "max": 100
+    },
+    "HEATING_WATER_RETURN": {
+      "min": 0,
+      "target": 0,
+      "max": 100
+    },
+    "ENGINE_COOLANT_RETURN": {
+      "min": 0,
+      "target": 0,
+      "max": 100
+    },
+    "ENGINE_COOLANT_FLOW": {
+      "min": 0,
+      "target": 0,
+      "max": 100
+    },
+    "CONTROL_CABINET": {
+      "min": 0,
+      "target": 0,
+      "max": 100
+    },
+    "HOUSING": {
+      "min": 0,
+      "target": 0,
+      "max": 100
+    },
+    "GENERATOR_WINDING": {
+      "min": 0,
+      "target": 0,
+      "max": 100
+    },
+    "ENGINE_OIL": {
+      "min": 0,
+      "target": 0,
+      "max": 100
+    },
+    "ELECTRICAL_EFFICIENCY": {
+      "min": 29.7,
+      "target": 31.3,
+      "max": 32.9
+    },
+    "THERMAL_EFFICIENCY": {
+      "min": 61.8,
+      "target": 65,
+      "max": 68.3
+    },
+    "OVERALL_EFFICIENCY": {
+      "min": 91.5,
+      "target": 96.3,
+      "max": 101.1
+    },
+    "COS_PHI": {
+      "min": 0.93,
+      "target": 0.95,
+      "max": 1.0
+    }
+  },
+  "ASV_20": {
+    "ACTIVE_POWER": {
+      "min": 19,
+      "target": 20,
+      "max": 21
+    },
+    "REACTIVE_POWER_BLIND_POWER": {
+      "min": 0,
+      "target": 0,
+      "max": 100
+    },
+    "APPARENT_POWER_RESERVED": {
+      "min": 0,
+      "target": 0,
+      "max": 100
+    },
+    "CURRENT": {
+      "min": 0,
+      "target": 0,
+      "max": 100
+    },
+    "SUPPLY_TEMPERATURE": {
+      "min": 0,
+      "target": 0,
+      "max": 100
+    },
+    "VOLUME_FLOW": {
+      "min": 27,
+      "target": 30,
+      "max": 33
+    },
+    "POWER": {
+      "min": 37,
+      "target": 39,
+      "max": 41
+    },
+    "RETURN_TEMPERATURE": {
+      "min": 52,
+      "target": 55,
+      "max": 58
+    },
+    "EXHAUST_TEMPERATURE": {
+      "min": 0,
+      "target": 0,
+      "max": 100
+    },
+    "HEATING_WATER_FLOW": {
+      "min": 0,
+      "target": 0,
+      "max": 100
+    },
+    "HEATING_WATER_RETURN": {
+      "min": 0,
+      "target": 0,
+      "max": 100
+    },
+    "ENGINE_COOLANT_RETURN": {
+      "min": 0,
+      "target": 0,
+      "max": 100
+    },
+    "ENGINE_COOLANT_FLOW": {
+      "min": 0,
+      "target": 0,
+      "max": 100
+    },
+    "CONTROL_CABINET": {
+      "min": 0,
+      "target": 0,
+      "max": 100
+    },
+    "HOUSING": {
+      "min": 0,
+      "target": 0,
+      "max": 100
+    },
+    "GENERATOR_WINDING": {
+      "min": 0,
+      "target": 0,
+      "max": 100
+    },
+    "ENGINE_OIL": {
+      "min": 0,
+      "target": 0,
+      "max": 100
+    },
+    "ELECTRICAL_EFFICIENCY": {
+      "min": 31.2,
+      "target": 32.8,
+      "max": 34.4
+    },
+    "THERMAL_EFFICIENCY": {
+      "min": 61.8,
+      "target": 65,
+      "max": 68.3
+    },
+    "OVERALL_EFFICIENCY": {
+      "min": 92.9,
+      "target": 97.8,
+      "max": 102.7
+    },
+    "COS_PHI": {
+      "min": 0.93,
+      "target": 0.95,
+      "max": 1.0
+    }
+  },
+  "ASV_21": {
+    "ACTIVE_POWER": {
+      "min": 19.9,
+      "target": 21,
+      "max": 22.1
+    },
+    "REACTIVE_POWER_BLIND_POWER": {
+      "min": 0,
+      "target": 0,
+      "max": 100
+    },
+    "APPARENT_POWER_RESERVED": {
+      "min": 0,
+      "target": 0,
+      "max": 100
+    },
+    "CURRENT": {
+      "min": 0,
+      "target": 0,
+      "max": 100
+    },
+    "SUPPLY_TEMPERATURE": {
+      "min": 0,
+      "target": 0,
+      "max": 100
+    },
+    "VOLUME_FLOW": {
+      "min": 27,
+      "target": 30,
+      "max": 33
+    },
+    "POWER": {
+      "min": 38.9,
+      "target": 41,
+      "max": 43.1
+    },
+    "RETURN_TEMPERATURE": {
+      "min": 52,
+      "target": 55,
+      "max": 58
+    },
+    "EXHAUST_TEMPERATURE": {
+      "min": 0,
+      "target": 0,
+      "max": 100
+    },
+    "HEATING_WATER_FLOW": {
+      "min": 0,
+      "target": 0,
+      "max": 100
+    },
+    "HEATING_WATER_RETURN": {
+      "min": 0,
+      "target": 0,
+      "max": 100
+    },
+    "ENGINE_COOLANT_RETURN": {
+      "min": 0,
+      "target": 0,
+      "max": 100
+    },
+    "ENGINE_COOLANT_FLOW": {
+      "min": 0,
+      "target": 0,
+      "max": 100
+    },
+    "CONTROL_CABINET": {
+      "min": 0,
+      "target": 0,
+      "max": 100
+    },
+    "HOUSING": {
+      "min": 0,
+      "target": 0,
+      "max": 100
+    },
+    "GENERATOR_WINDING": {
+      "min": 0,
+      "target": 0,
+      "max": 100
+    },
+    "ENGINE_OIL": {
+      "min": 0,
+      "target": 0,
+      "max": 100
+    },
+    "ELECTRICAL_EFFICIENCY": {
+      "min": 31.2,
+      "target": 32.8,
+      "max": 34.4
+    },
+    "THERMAL_EFFICIENCY": {
+      "min": 61.8,
+      "target": 65,
+      "max": 68.3
+    },
+    "OVERALL_EFFICIENCY": {
+      "min": 92.9,
+      "target": 97.8,
+      "max": 102.7
+    }
+  },
+  "ASV_2x": {
+    "ACTIVE_POWER": {
+      "min": 17,
+      "target": 20,
+      "max": 25
+    },
+    "REACTIVE_POWER_BLIND_POWER": {
+      "min": 0,
+      "target": 0,
+      "max": 100
+    },
+    "APPARENT_POWER_RESERVED": {
+      "min": 0,
+      "target": 0,
+      "max": 100
+    },
+    "CURRENT": {
+      "min": 0,
+      "target": 0,
+      "max": 100
+    },
+    "SUPPLY_TEMPERATURE": {
+      "min": 0,
+      "target": 0,
+      "max": 100
+    },
+    "VOLUME_FLOW": {
+      "min": 27,
+      "target": 30,
+      "max": 33
+    },
+    "POWER": {
+      "min": 32,
+      "target": 39,
+      "max": 46
+    },
+    "RETURN_TEMPERATURE": {
+      "min": 52,
+      "target": 55,
+      "max": 58
+    },
+    "EXHAUST_TEMPERATURE": {
+      "min": 0,
+      "target": 0,
+      "max": 100
+    },
+    "HEATING_WATER_FLOW": {
+      "min": 0,
+      "target": 0,
+      "max": 100
+    },
+    "HEATING_WATER_RETURN": {
+      "min": 0,
+      "target": 0,
+      "max": 100
+    },
+    "ENGINE_COOLANT_RETURN": {
+      "min": 0,
+      "target": 0,
+      "max": 100
+    },
+    "ENGINE_COOLANT_FLOW": {
+      "min": 0,
+      "target": 0,
+      "max": 100
+    },
+    "CONTROL_CABINET": {
+      "min": 0,
+      "target": 0,
+      "max": 100
+    },
+    "HOUSING": {
+      "min": 0,
+      "target": 0,
+      "max": 100
+    },
+    "GENERATOR_WINDING": {
+      "min": 0,
+      "target": 0,
+      "max": 100
+    },
+    "ENGINE_OIL": {
+      "min": 0,
+      "target": 0,
+      "max": 100
+    },
+    "ELECTRICAL_EFFICIENCY": {
+      "min": 29,
+      "target": 32.8,
+      "max": 35
+    },
+    "THERMAL_EFFICIENCY": {
+      "min": 61,
+      "target": 65,
+      "max": 69
+    },
+    "OVERALL_EFFICIENCY": {
+      "min": 91,
+      "target": 97.8,
+      "max": 103
+    }
+  },
+  "ASV_30": {
+    "ACTIVE_POWER": {
+      "min": 28.5,
+      "target": 30,
+      "max": 31.5
+    },
+    "REACTIVE_POWER_BLIND_POWER": {
+      "min": 0,
+      "target": 0,
+      "max": 100
+    },
+    "APPARENT_POWER_RESERVED": {
+      "min": 0,
+      "target": 0,
+      "max": 100
+    },
+    "CURRENT": {
+      "min": 0,
+      "target": 0,
+      "max": 100
+    },
+    "SUPPLY_TEMPERATURE": {
+      "min": 0,
+      "target": 0,
+      "max": 100
+    },
+    "VOLUME_FLOW": {
+      "min": 48,
+      "target": 53,
+      "max": 59
+    },
+    "POWER": {
+      "min": 66.5,
+      "target": 70,
+      "max": 73.5
+    },
+    "RETURN_TEMPERATURE": {
+      "min": 52,
+      "target": 55,
+      "max": 58
+    },
+    "EXHAUST_TEMPERATURE": {
+      "min": 0,
+      "target": 0,
+      "max": 100
+    },
+    "HEATING_WATER_FLOW": {
+      "min": 0,
+      "target": 0,
+      "max": 100
+    },
+    "HEATING_WATER_RETURN": {
+      "min": 0,
+      "target": 0,
+      "max": 100
+    },
+    "ENGINE_COOLANT_RETURN": {
+      "min": 0,
+      "target": 0,
+      "max": 100
+    },
+    "ENGINE_COOLANT_FLOW": {
+      "min": 0,
+      "target": 0,
+      "max": 100
+    },
+    "CONTROL_CABINET": {
+      "min": 0,
+      "target": 0,
+      "max": 100
+    },
+    "HOUSING": {
+      "min": 0,
+      "target": 0,
+      "max": 100
+    },
+    "GENERATOR_WINDING": {
+      "min": 0,
+      "target": 0,
+      "max": 100
+    },
+    "ENGINE_OIL": {
+      "min": 0,
+      "target": 0,
+      "max": 100
+    },
+    "ELECTRICAL_EFFICIENCY": {
+      "min": 28.5,
+      "target": 100,
+      "max": 31.5
+    },
+    "THERMAL_EFFICIENCY": {
+      "min": 66.5,
+      "target": 70,
+      "max": 73.5
+    },
+    "OVERALL_EFFICIENCY": {
+      "min": 95,
+      "target": 100,
+      "max": 105
+    }
+  },
+  "ASV_3x": {
+    "ACTIVE_POWER": {
+      "min": 30,
+      "target": 33,
+      "max": 36
+    },
+    "REACTIVE_POWER_BLIND_POWER": {
+      "min": 0,
+      "target": 0,
+      "max": 100
+    },
+    "APPARENT_POWER_RESERVED": {
+      "min": 0,
+      "target": 0,
+      "max": 100
+    },
+    "CURRENT": {
+      "min": 0,
+      "target": 0,
+      "max": 100
+    },
+    "SUPPLY_TEMPERATURE": {
+      "min": 0,
+      "target": 0,
+      "max": 100
+    },
+    "VOLUME_FLOW": {
+      "min": 56,
+      "target": 62,
+      "max": 68
+    },
+    "POWER": {
+      "min": 66.5,
+      "target": 70,
+      "max": 73.5
+    },
+    "RETURN_TEMPERATURE": {
+      "min": 52,
+      "target": 55,
+      "max": 58
+    },
+    "EXHAUST_TEMPERATURE": {
+      "min": 0,
+      "target": 0,
+      "max": 100
+    },
+    "HEATING_WATER_FLOW": {
+      "min": 0,
+      "target": 0,
+      "max": 100
+    },
+    "HEATING_WATER_RETURN": {
+      "min": 0,
+      "target": 0,
+      "max": 100
+    },
+    "ENGINE_COOLANT_RETURN": {
+      "min": 0,
+      "target": 0,
+      "max": 100
+    },
+    "ENGINE_COOLANT_FLOW": {
+      "min": 0,
+      "target": 0,
+      "max": 100
+    },
+    "CONTROL_CABINET": {
+      "min": 0,
+      "target": 0,
+      "max": 100
+    },
+    "HOUSING": {
+      "min": 0,
+      "target": 0,
+      "max": 100
+    },
+    "GENERATOR_WINDING": {
+      "min": 0,
+      "target": 0,
+      "max": 100
+    },
+    "ENGINE_OIL": {
+      "min": 0,
+      "target": 0,
+      "max": 100
+    },
+    "ELECTRICAL_EFFICIENCY": {
+      "min": 28.5,
+      "target": 30,
+      "max": 31.5
+    },
+    "THERMAL_EFFICIENCY": {
+      "min": 66.5,
+      "target": 70,
+      "max": 69.2
+    },
+    "OVERALL_EFFICIENCY": {
+      "min": 95,
+      "target": 100,
+      "max": 100.7
+    }
+  },
+  "ASV_40": {
+    "ACTIVE_POWER": {
+      "min": 38,
+      "target": 40,
+      "max": 42
+    },
+    "REACTIVE_POWER_BLIND_POWER": {
+      "min": 0,
+      "target": 0,
+      "max": 100
+    },
+    "APPARENT_POWER_RESERVED": {
+      "min": 0,
+      "target": 0,
+      "max": 100
+    },
+    "CURRENT": {
+      "min": 0,
+      "target": 0,
+      "max": 100
+    },
+    "SUPPLY_TEMPERATURE": {
+      "min": 0,
+      "target": 0,
+      "max": 100
+    },
+    "VOLUME_FLOW": {
+      "min": 56,
+      "target": 62,
+      "max": 68
+    },
+    "POWER": {
+      "min": 80.8,
+      "target": 85,
+      "max": 89.3
+    },
+    "RETURN_TEMPERATURE": {
+      "min": 52,
+      "target": 55,
+      "max": 58
+    },
+    "EXHAUST_TEMPERATURE": {
+      "min": 0,
+      "target": 0,
+      "max": 100
+    },
+    "HEATING_WATER_FLOW": {
+      "min": 0,
+      "target": 0,
+      "max": 100
+    },
+    "HEATING_WATER_RETURN": {
+      "min": 0,
+      "target": 0,
+      "max": 100
+    },
+    "ENGINE_COOLANT_RETURN": {
+      "min": 0,
+      "target": 0,
+      "max": 100
+    },
+    "ENGINE_COOLANT_FLOW": {
+      "min": 0,
+      "target": 0,
+      "max": 100
+    },
+    "CONTROL_CABINET": {
+      "min": 0,
+      "target": 0,
+      "max": 100
+    },
+    "HOUSING": {
+      "min": 0,
+      "target": 0,
+      "max": 100
+    },
+    "GENERATOR_WINDING": {
+      "min": 0,
+      "target": 0,
+      "max": 100
+    },
+    "ENGINE_OIL": {
+      "min": 0,
+      "target": 0,
+      "max": 100
+    },
+    "ELECTRICAL_EFFICIENCY": {
+      "min": 28.5,
+      "target": 30,
+      "max": 31.5
+    },
+    "THERMAL_EFFICIENCY": {
+      "min": 62.6,
+      "target": 65.9,
+      "max": 69.2
+    },
+    "OVERALL_EFFICIENCY": {
+      "min": 91.1,
+      "target": 95.9,
+      "max": 100.7
+    }
+  },
+  "DEFAULT": {
+    "VOLTAGE_L1_VOLTS": {
+      "min": 220,
+      "target": 230,
+      "max": 240
+    },
+    "VOLTAGE_L2_VOLTS": {
+      "min": 220,
+      "target": 230,
+      "max": 240
+    },
+    "VOLTAGE_L3_VOLTS": {
+      "min": 220,
+      "target": 230,
+      "max": 240
+    },
+    "FREQUENCY": {
+      "min": 49.9,
+      "target": 50,
+      "max": 50.1
+    },
+    "GAS_TEMPERATURE": {
+      "min": 15.0,
+      "target": 25,
+      "max": 35.0
+    },
+    "GAS_PRESSURE": {
+      "min": 10.0,
+      "target": 20,
+      "max": 30.0
+    },
+    "AMBIENT_TEMPERATURE": {
+      "min": 15.0,
+      "target": 25,
+      "max": 35.0
+    },
+    "AMBIENT_PRESSURE": {
+      "min": 973.0,
+      "target": 1013,
+      "max": 1053.0
+    }
+  }
+}
+

@@ -1,24 +1,26 @@
-package com.example.backend.service;
+package com.example.backend.service.production;
 
 import com.example.backend.models.ProductStatus;
 import com.example.backend.repository.ProductRepository;
 import jakarta.persistence.EntityNotFoundException;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 @Service
 public class ProductService {
 
-  @Autowired
-  ProductRepository productRepository;
+  private final ProductRepository productRepository;
 
-  public Short getProductStatusBySerienNummer(Integer serienNummer) {
-    ProductStatus status = productRepository.findBySerienNummer(serienNummer);
+  public ProductService(ProductRepository productRepository) {
+    this.productRepository = productRepository;
+  }
+
+  public Short getProductStatusBySerialNumber(Integer serialNumber) {
+    ProductStatus status = productRepository.findBySerialNumber(serialNumber);
 
     if (status == null) {
-      throw new EntityNotFoundException("No product found for SerienNummer: " + serienNummer);
+      throw new EntityNotFoundException("No product found for serialNumber: " + serialNumber);
     }
-    return status.getProduktStatus();
+    return status.getProductStatus();
   }
 
 }
