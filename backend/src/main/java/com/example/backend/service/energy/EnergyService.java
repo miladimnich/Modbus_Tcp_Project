@@ -9,7 +9,8 @@ import com.example.backend.exception.ModbusDeviceException;
 import com.example.backend.models.ModbusDevice;
 import com.example.backend.models.SubDevice;
 import com.example.backend.models.TestStation;
-import com.example.backend.service.DeviceService;
+import com.example.backend.service.modbus.ModbusBitwiseService;
+import com.example.backend.service.teststation.DeviceService;
 import com.serotonin.modbus4j.exception.ModbusTransportException;
 import com.serotonin.modbus4j.sero.messaging.TimeoutException;
 import com.serotonin.modbus4j.sero.messaging.WaitingRoomException;
@@ -44,7 +45,7 @@ public class EnergyService {
 
   @Autowired
   public EnergyService(ModbusBitwiseService modbusBitwiseService, DeviceService deviceService,
-      WebSocketHandlerCustom webSocketHandlerCustom) {
+                       WebSocketHandlerCustom webSocketHandlerCustom) {
     this.modbusBitwiseService = modbusBitwiseService;
     this.deviceService = deviceService;
     this.webSocketHandlerCustom = webSocketHandlerCustom;
@@ -64,7 +65,7 @@ public class EnergyService {
 
   public void processEnergyData(int deviceId) throws InterruptedException {
     TestStation testStation = deviceService.getTestStationById(deviceId);
-    for (ModbusDevice modbusDevice : testStation.getModbusdevices()) {
+    for (ModbusDevice modbusDevice : testStation.getModBusDevices()) {
       List<SubDevice> energySubDevices = modbusDevice.getSubDevices();
       for (SubDevice subDevice : energySubDevices) {
         if (subDevice.getType().equals(SubDeviceType.ENERGY)) {
@@ -82,17 +83,17 @@ public class EnergyService {
                      BLINDLEISTUNG_REACTIVPOWER, STROM:
 
                   result = modbusBitwiseService.bitwiseShiftCalculation(deviceId, startAddress,
-                      modbusDevice, subDevice);
+                          modbusDevice, subDevice);
 
                   if (energyCalculationType == ERZEUGTE_ENERGIE ||
-                      energyCalculationType == EnergyCalculationType.GENUTZTE_ENERGIE ||
-                      energyCalculationType == EnergyCalculationType.STROM) {
+                          energyCalculationType == EnergyCalculationType.GENUTZTE_ENERGIE ||
+                          energyCalculationType == EnergyCalculationType.STROM) {
                     double value = (double) result / 1000;
                     String formattedResult = String.format(Locale.US, "%.2f", value);
                     processAndPush(deviceId, energyCalculationType.name(), formattedResult);
                   } else if (energyCalculationType == EnergyCalculationType.WIRKLEISTUNG ||
-                      energyCalculationType == EnergyCalculationType.BLINDLEISTUNG_REACTIVPOWER ||
-                      energyCalculationType == EnergyCalculationType.SCHEINLEISTUNG_RESERVED) {
+                          energyCalculationType == EnergyCalculationType.BLINDLEISTUNG_REACTIVPOWER ||
+                          energyCalculationType == EnergyCalculationType.SCHEINLEISTUNG_RESERVED) {
                     double value = (double) result / 10000;
                     String formattedResult = String.format(Locale.US, "%.2f", value);
                     processAndPush(deviceId, energyCalculationType.name(), formattedResult);
@@ -184,7 +185,7 @@ public class EnergyService {
 
   public void calculateAndPushEnergyDifference(int deviceId) throws InterruptedException {
     List<SubDevice> energySubDevices = deviceService.getSubDevicesByType(deviceId,
-        SubDeviceType.ENERGY);
+            SubDeviceType.ENERGY);
     for (SubDevice subDevice : energySubDevices) {
       List<EnergyCalculationType> energyCalculationTypes = subDevice.getEnergyCalculationTypes();
       for (EnergyCalculationType energyCalculationType : energyCalculationTypes) {
@@ -241,5 +242,4 @@ public class EnergyService {
     return lastEnergyResults;
   }
 }
-
 

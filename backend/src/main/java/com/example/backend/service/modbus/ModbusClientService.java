@@ -3,7 +3,7 @@ package com.example.backend.service;
 import com.example.backend.exception.ModbusIOException;
 import com.example.backend.models.ModbusDevice;
 import com.example.backend.models.TestStation;
-import com.example.backend.service.DeviceService;
+import com.example.backend.service.teststation.DeviceService;
 import com.serotonin.modbus4j.ModbusFactory;
 import com.serotonin.modbus4j.ModbusMaster;
 import com.serotonin.modbus4j.ip.IpParameters;
@@ -49,7 +49,7 @@ public class ModbusClientService {
     try {
       List<ModbusMaster> modbusMastersList = new ArrayList<>();
       List<IpParameters> ipParametersList = new ArrayList<>();
-      for (ModbusDevice device : testStation.getModbusdevices()) {
+      for (ModbusDevice device : testStation.getModBusDevices()) {
         String ipAddress = device.getIpAddress();
         int port = device.getPort();
 

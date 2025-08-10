@@ -1,4 +1,4 @@
-package com.example.backend.service;
+package com.example.backend.service.heating;
 
 import static com.example.backend.enums.HeatingCalculationType.ERZEUGTE_ENERGIE_HEATING;
 
@@ -10,6 +10,8 @@ import com.example.backend.models.ModbusDevice;
 import com.example.backend.models.SubDevice;
 import com.example.backend.models.TestStation;
 
+import com.example.backend.service.modbus.ModbusBitwiseService;
+import com.example.backend.service.teststation.DeviceService;
 import com.serotonin.modbus4j.exception.ModbusTransportException;
 import com.serotonin.modbus4j.sero.messaging.TimeoutException;
 import com.serotonin.modbus4j.sero.messaging.WaitingRoomException;
@@ -43,7 +45,7 @@ public class HeatingService {
   private final DeviceService deviceService;
 
   public HeatingService(WebSocketHandlerCustom webSocketHandlerCustom,
-      ModbusBitwiseService modbusBitwiseService, DeviceService deviceService) {
+                        ModbusBitwiseService modbusBitwiseService, DeviceService deviceService) {
     this.webSocketHandlerCustom = webSocketHandlerCustom;
     this.modbusBitwiseService = modbusBitwiseService;
     this.deviceService = deviceService;
@@ -70,7 +72,7 @@ public class HeatingService {
     }
 
 
-    for (ModbusDevice modbusDevice : testStation.getModbusdevices()) {
+    for (ModbusDevice modbusDevice : testStation.getModBusDevices()) {
       List<SubDevice> heatingSubDevices = modbusDevice.getSubDevices();
       for (SubDevice subDevice : heatingSubDevices) {
         if (subDevice.getType().equals(SubDeviceType.HEATING)) {
@@ -90,15 +92,15 @@ public class HeatingService {
 
                   System.out.println("Calculated Value: " + heatingCalculationType.name() + " = " + result);
                   if (heatingCalculationType == HeatingCalculationType.VORLAUFTEMPERATUR ||
-                      heatingCalculationType == HeatingCalculationType.TEMPERATURDIFFERENZ ||
-                      heatingCalculationType == HeatingCalculationType.RuCKLAUFTEMPERATUR
+                          heatingCalculationType == HeatingCalculationType.TEMPERATURDIFFERENZ ||
+                          heatingCalculationType == HeatingCalculationType.RuCKLAUFTEMPERATUR
                   ) {
                     double value = (double) result / 100;
                     String formattedResult = String.format(Locale.US, "%.2f", value);
                     processAndPush(deviceId, heatingCalculationType.name(), formattedResult);
 
                   } else if (heatingCalculationType == HeatingCalculationType.GESAMT_VOLUMEN ||
-                      heatingCalculationType == HeatingCalculationType.LEISTUNG) {
+                          heatingCalculationType == HeatingCalculationType.LEISTUNG) {
                     double value = (double) result / 1000;
                     String formattedResult = String.format(Locale.US, "%.2f", value);
                     processAndPush(deviceId, heatingCalculationType.name(), formattedResult);
@@ -154,9 +156,9 @@ public class HeatingService {
 
   public boolean hasHeatingSubDevice(int deviceId) {
     TestStation testStation = deviceService.getTestStationById(deviceId);
-    return testStation.getModbusdevices().stream()
-        .flatMap(modbusDevice -> modbusDevice.getSubDevices().stream())
-        .anyMatch(subDevice -> subDevice.getType() == SubDeviceType.HEATING);
+    return testStation.getModBusDevices().stream()
+            .flatMap(modbusDevice -> modbusDevice.getSubDevices().stream())
+            .anyMatch(subDevice -> subDevice.getType() == SubDeviceType.HEATING);
   }
 
 
@@ -199,7 +201,7 @@ public class HeatingService {
 
   public void calculateAndPushHeatingDifference(int deviceId) throws InterruptedException {
     List<SubDevice> heatingSubDevices = deviceService.getSubDevicesByType(deviceId,
-        SubDeviceType.HEATING);
+            SubDeviceType.HEATING);
     for (SubDevice subDevice : heatingSubDevices) {
       List<HeatingCalculationType> heatingCalculationTypes = subDevice.getHeatingCalculationTypes();
       for (HeatingCalculationType heatingCalculationType : heatingCalculationTypes) {
@@ -252,5 +254,4 @@ public class HeatingService {
     return lastHeatingResults;
   }
 }
-
 

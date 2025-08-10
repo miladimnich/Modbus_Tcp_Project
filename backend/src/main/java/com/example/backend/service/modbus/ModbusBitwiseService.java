@@ -3,6 +3,7 @@ package com.example.backend.service;
 import com.example.backend.exception.ModbusDeviceException;
 import com.example.backend.models.ModbusDevice;
 import com.example.backend.models.SubDevice;
+import com.example.backend.service.modbus.ModbusRegisterService;
 import com.serotonin.modbus4j.exception.ModbusTransportException;
 import com.serotonin.modbus4j.sero.messaging.WaitingRoomException;
 import java.util.List;

@@ -5,6 +5,7 @@ import com.example.backend.exception.ModbusDeviceException;
 import com.example.backend.models.ModbusDevice;
 import com.example.backend.models.SubDevice;
 import com.example.backend.models.TestStation;
+import com.example.backend.service.teststation.DeviceService;
 import com.serotonin.modbus4j.sero.messaging.TimeoutException;
 
 import com.serotonin.modbus4j.ModbusMaster;

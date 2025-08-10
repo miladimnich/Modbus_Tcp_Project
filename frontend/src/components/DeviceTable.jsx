@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import { unitMapping, displayNameMapping } from "../constants/calculationTypes";
 
 const DeviceTable = ({
@@ -14,11 +14,12 @@ const DeviceTable = ({
 }) => {
   // Memoize the rows to avoid unnecessary re-renders when `currentValues` hasn't changed
   const memoizedRows = useMemo(() => {
+  
+
     return dataKeys.map((key) => {
       // Get display name from the mapping
-      const displayName =
-        displayNameMapping[key] ?? `No display name for ${key}`;
-      console.log(`Key: ${key}, Display Name: ${displayName}`); // Log to debug
+      const displayName = displayNameMapping[key] ?? `No display name for ${key}`;
+     // console.log(`Key: ${key}, Display Name: ${displayName}`); // Log to debug
 
       return (
         <tr key={key}>
@@ -49,7 +50,7 @@ const DeviceTable = ({
             {mergedBorders?.[key]?.min ?? "N/A"}
           </td>
           {/* Target column */}
-          <td>{mergedBorders?.[key]?.soll ?? "N/A"}</td>
+          <td>{mergedBorders?.[key]?.target ?? "N/A"}</td>
           {/* Max value column */}
           <td className={outOfRangeState?.[key]?.max ? "out-of-range" : ""}>
             {mergedBorders?.[key]?.max ?? "N/A"}
@@ -57,15 +58,7 @@ const DeviceTable = ({
         </tr>
       );
     });
-  }, [
-    dataKeys,
-    firstValues,
-    currentValues,
-    lastValues,
-    difference,
-    outOfRangeState,
-    mergedBorders,
-  ]);
+  }, [dataKeys, firstValues, currentValues, lastValues, difference, outOfRangeState, mergedBorders]);
 
   return (
     <div className="device-table">
@@ -73,14 +66,14 @@ const DeviceTable = ({
       <table className="table">
         <thead>
           <tr>
-            <th>{dataType} Type</th>
-            <th>Unit</th>
-            <th>First Value</th>
-            <th>Current Value</th>
-            <th>Last Value</th>
-            <th>Difference</th>
+            <th>{dataType}</th>
+            <th>Einheit</th>
+            <th>Startwert</th>
+            <th>Istwert</th>
+            <th>Endwert</th>
+            <th>Differenz</th>
             <th>Min</th>
-            <th>Target</th>
+            <th>Soll</th>
             <th>Max</th>
           </tr>
         </thead>
@@ -99,3 +92,4 @@ const DeviceTable = ({
 };
 
 export default DeviceTable;
+

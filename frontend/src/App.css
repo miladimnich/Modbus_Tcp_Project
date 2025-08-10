@@ -34,12 +34,20 @@
 
 /* Success notification */
 .Toastify__toast--success {
-  background-color: #28a745 !important;
-  /* Green */
-  color: white;
-  border: 1px solid #218838;
-  /* Slightly darker border for contrast */
+  background-color: #2ecc71 !important; /* Brighter green for better contrast */
+  color: #ffffff !important; /* Ensure white text */
+  border: 2px solid #27ae60 !important; /* Stronger border */
 }
+
+/* Warn notification */
+.Toastify__toast--warn,
+.Toastify__toast--warning {
+  background-color: #a72844 !important;
+  color: white !important;
+  border: 1px solid #8b1e37 !important;
+}
+
+
 
 /* Error notification */
 .Toastify__toast.Toastify__toast--error {
@@ -101,11 +109,11 @@
   /* Gradient header */
   color: white;
   padding: 5px;
-  text-align: center;
+  text-align: left;
   font-weight: bold;
-  border-bottom: 3px solid #444;
-  /* Strong separator */
+
   font-size: 12px;
+  border: 1px solid red;
 }
 
 
@@ -152,7 +160,7 @@
 .table-energy,
 .table-gas,
 .table-heating,
-.bhkw-table {
+.chp-table {
   width: 48%;
   /* Ensures all tables take up equal width */
 
@@ -161,11 +169,9 @@
 /* Ensure all columns are equal in width, including first column */
 .device-table .table th,
 .device-table .table td {
-  padding: 5px 5px;
+  padding: 5px 10px;
   /* Adjust the left and right padding (8px top/bottom, 16px left/right) */
-
-
-  text-align: center;
+  text-align: left;
   border: 1px solid #771717;
   /* Ensures borders are applied */
   box-sizing: border-box;
@@ -257,11 +263,12 @@
 /* Adjust last column */
 .device-table th:nth-child(8),
 .device-table td:nth-child(8) {
+  min-width: 80px;
+  /* or more */
   width: 14%;
-  /* Eighth column width */
-  word-wrap: break-word;
-  /* Ensure text wraps if it's too long */
-
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .device-table th:nth-child(9),
@@ -270,6 +277,7 @@
   /* Ninth column width */
   word-wrap: break-word;
   /* Ensure text wraps if it's too long */
+  min-width: 80px;
 
 }
 
@@ -417,7 +425,7 @@
 }
 
 .checkStatus {
-  font-size: 1.2rem;
+  font-size: 1rem;
   /* Ensure same font size as input/select */
   font-weight: bold;
   /* Bold text for the button */
@@ -455,13 +463,13 @@
   /* Vertically align the text */
   font-size: 2rem;
   /* Font size */
-  width: 120px;
+  width: auto;
   /* Fixed width to accommodate time format like 99:59:59 */
   font-family: "Roboto Mono", monospace;
   /* A more modern monospace font */
   font-weight: bold;
   /* Make the text bolder */
-  overflow: hidden;
+  overflow: visible;
   /* Hide any overflow if the time overflows */
   white-space: nowrap;
   /* Prevent the time from wrapping */
@@ -550,6 +558,7 @@
   background: #95a5a6;
   cursor: not-allowed;
 }
+
 .ubertragen:disabled {
   background: #95a5a6;
   cursor: not-allowed;
@@ -570,10 +579,12 @@
   background: linear-gradient(135deg, #3090cf);
   color: white;
 }
+
 .ubertragen {
   background: linear-gradient(135deg, #cf30c7);
   color: white;
 }
+
 
 
 

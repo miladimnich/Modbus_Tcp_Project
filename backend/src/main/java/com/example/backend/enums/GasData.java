@@ -1,8 +1,0 @@
-package com.example.backend.enums;
-
-public enum GasData {
-  GAS_LEISTUNG,
-  ELEKTRISCHER_WIRKUNGSGRAD,
-  THERMISCHER_WIRKUNGSGRAD,
-  GESAMT_WIRKUNGSGRAD
-}

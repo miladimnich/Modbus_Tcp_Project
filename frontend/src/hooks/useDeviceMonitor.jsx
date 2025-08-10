@@ -1,36 +1,28 @@
-/* eslint-disable no-unused-vars */
-/* eslint-disable react-hooks/exhaustive-deps */
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from 'react';
 import useWebSocket from "./useWebSocket";
-import {
-  fetchDevices,
-  startMeasure,
-  stopMeasure,
-  fetchMaschineConfig,
-  fetchMachineTypes,
-  fetchMaschineBordersDefault,
-  fetchProductStatus,
-  ubertragenData,
-} from "../api/apiClient";
+import { fetchTestStations, startMeasure, fetchMaschineConfig, fetchMachineTypes, fetchMaschineBordersDefault, fetchProductStatus, submit, stopMeasure, setAutoStopDuration } from '../api/apiClient';
 import { toast } from "react-toastify";
 
+
 const useDeviceMonitor = () => {
-  const [devices, setDevices] = useState([]);
+  const [testStations, setTestStations] = useState([]);
   const [selectedDevice, setSelectedDevice] = useState(null);
-  const { socket, message, isOpen, error, onStopPolling, setOnStopPolling } =
-    useWebSocket(selectedDevice);
+  const { socket, message, isOpen, error } = useWebSocket(selectedDevice);
   const [currentValues, setCurrentValues] = useState({});
   const [firstValues, setFirstValues] = useState({});
   const [lastValues, setLastValues] = useState({});
   const [isRunning, setIsRunning] = useState(false);
   const [difference, setDifference] = useState({});
   const [gasMeterDifference, setGasMeterDifference] = useState({});
-  const [selectedMachineType, setSelectedMachineType] = useState(""); // Initially no machine type selected
+  const [selectedMachineType, setSelectedMachineType] = useState(''); // Initially no machine type selected
   const [machineTypeBorders, setMachineTypeBorders] = useState({}); // Default min/max for ASV_20
   const [machineTypes, setMachineTypes] = useState([]);
   const [isMachineTypeSelected, setIsMachineTypeSelected] = useState(false);
-  const [serienNummer, setSerienNummer] = useState("");
+  const previousValuesRef = useRef({});
+
+  const [serialNumber, setSerialNumber] = useState("");
   const [productStatus, setProductStatus] = useState(null);
+
 
   const [outOfRangeState, setOutOfRangeState] = useState({});
   const [defaultBorders, setDefaultBorders] = useState({});
@@ -38,20 +30,43 @@ const useDeviceMonitor = () => {
 
   // Timer-related states
   const [elapsedTime, setElapsedTime] = useState(0); // Track elapsed time
-  const [intervalId, setIntervalId] = useState(null); // Store interval ID
-  const [isStopped, setStopped] = useState(false); // Track if the task has been started
+  const intervalIdRef = useRef(null);
+  // const [timerStarted, setTimerStarted] = useState(false);
+
+
+  const [isStopped, setStopped] = useState(false);  // Track if the task has been started
+  const [isReset, setIsReset] = useState(false);
+  const [hasEvaluatedAfterFirstDiff, setHasEvaluatedAfterFirstDiff] = useState(false);
+
+  const [autoStopMinutes, setAutoStopMinutes] = useState(120);
+  const [backendStartTime, setBackendStartTime] = useState({});
+
 
   useEffect(() => {
-    if (onStopPolling || !isOpen) {
-      console.log("onStopPolling changed:", onStopPolling, isOpen);
-      if (!isOpen) {
-        handleStopTask();
-        setOnStopPolling(false); // Reset the flag after stopping
-      }
+    if (!isOpen) {
+      console.log("WebSocket closed, stopping timer");
+      setIsRunning(false);
+      setStopped(true);
+      stopTimer();
+      //  setIsMachineTypeSelected(false);
     }
-  }, [onStopPolling, isOpen]);
+  }, [isOpen]);  // always called in every render
 
-  //fetch all machines
+
+  useEffect(() => {
+    console.log("Starting to fetch devices...");
+    fetchTestStations()
+      .then((testStations) => {
+        console.log("Fetched devices:", testStations); // ✅ devices is already the data
+        setTestStations(testStations);
+      })
+      .catch((error) => {
+        console.error("Error fetching devices:", error);
+      });
+  }, []);
+
+
+
   useEffect(() => {
     fetchMachineTypes()
       .then((types) => {
@@ -61,6 +76,7 @@ const useDeviceMonitor = () => {
         console.error("Error fetching machine types:", error);
       });
   }, []);
+
 
   useEffect(() => {
     if (!selectedMachineType) return;
@@ -78,316 +94,360 @@ const useDeviceMonitor = () => {
     fetchConfig();
   }, [selectedMachineType]);
 
+
   // Handle change in selected machine type
   const handleMachineTypeChange = (event) => {
-    setSelectedMachineType(event.target.value); // Update selected machine type
+    setSelectedMachineType(event.target.value);  // Update selected machine type
   };
 
-  const handleInputChange = (e) => {
-    setSerienNummer(e.target.value);
+  const handleInputChange = (event) => {
+    setSerialNumber(event.target.value);
   };
 
   const handleUbertragen = async () => {
     try {
-      const response = await ubertragenData(selectedDevice); // Assuming selectedDevice is the deviceId
-      toast.success(response.message || "Daten erfolgreich übertragen"); // Show success message if available
+      const response = await submit(selectedDevice); // Assuming selectedDevice is the deviceId
+      toast.success(response.message || "Daten erfolgreich übertragen");  // Show success message if available
     } catch (error) {
-      toast.error("Fehler beim Übertragen der Daten"); // Show error message
+      toast.error("Fehler beim Übertragen der Daten");  // Show error message
     }
   };
 
+
   const fetchStatus = async () => {
-    if (!serienNummer) return;
+
+    if (!serialNumber) return;
     try {
-      const data = await fetchProductStatus(serienNummer);
+      const data = await fetchProductStatus(serialNumber);
       setProductStatus(data);
       // Check if the product status is 70
       if (data === 20) {
-        toast.success(`Product Status: ${data}`);
+        toast.success(`Produktstatus: Testbetrieb ${data}`);
         setIsButtonDisabled(true); // Disable the button if status is 70
       } else {
-        toast.info(`Product Status: ${data}`);
+        toast.warn(`Falscher Produktstatus ${data}`);
       }
     } catch (error) {
-      console.error("Error fetching status:", error);
+      console.error("Fehler beim Abrufen des Status", error);
       setProductStatus(null);
       toast.error("Fehler beim Abrufen des Status.");
     }
   };
 
-  useEffect(() => {
-    fetchDevices()
-      .then((response) => {
-        setDevices(response.data);
-      })
-      .catch((error) => {
-        console.error("Error fetching devices:", error);
-      });
-  }, []);
+
 
   const handleDeviceChange = async (event) => {
-    const deviceId = event.target.value;
-    setSelectedDevice(deviceId);
+    const testStationId = event.target.value;
+    setSelectedDevice(testStationId);
 
-    // Send WebSocket message
-    if (socket && isOpen && deviceId) {
-      socket.send(JSON.stringify({ deviceId }));
-    }
     if (!isRunning) {
       resetTimer();
     }
     // Fetch default borders
     try {
-      const defaultBorders = await fetchMaschineBordersDefault(deviceId);
+      const defaultBorders = await fetchMaschineBordersDefault();
       console.log("Setting defaultBorders to:", defaultBorders);
       setDefaultBorders(defaultBorders);
       console.log("After setDefaultBorders:", defaultBorders);
     } catch (error) {
-      console.error("Failed to fetch borders for device:", deviceId, error);
-    }
-  };
-
-  const resetTimer = () => {
-    setElapsedTime(0); // Reset the elapsed time
-    setIsRunning(false); // Stop the timer
-    if (intervalId) {
-      clearInterval(intervalId); // Clear the interval
-      setIntervalId(null);
+      console.error("Failed to fetch borders for device:", error);
     }
   };
 
   const startTimer = (backendStartTime) => {
-    if (!intervalId) {
-      // intervalId is null means its falsy
-      const id = setInterval(() => {
-        const elapsed = Math.floor((Date.now() - backendStartTime) / 1000);
-        setElapsedTime(elapsed);
-      }, 1000);
-      setIntervalId(id);
+    if (intervalIdRef.current) {
+      console.warn("Tried to start timer, but one is already running!");
     }
+
+    console.log('Starting interval timer at:', new Date().toISOString());
+    // Update immediately to avoid delay
+    const now = Date.now();
+    let elapsed = Math.floor((now - backendStartTime) / 1000) - 1;
+    if (elapsed < 0) elapsed = 0;
+    setElapsedTime(elapsed);
+
+    intervalIdRef.current = setInterval(() => {
+      const now = Date.now();
+      const elapsed = Math.floor((now - backendStartTime) / 1000);
+      console.log('Timer tick:', elapsed, 'seconds elapsed');
+      setElapsedTime(elapsed);
+    }, 1000);
+    console.log('Interval started with ID:', intervalIdRef.current);
   };
 
   const stopTimer = () => {
-    if (intervalId) {
-      clearInterval(intervalId); // Clear interval
-      setIntervalId(null);
+    console.log('Stopping timer, intervalId:', intervalIdRef.current);
+    if (intervalIdRef.current) {
+      clearInterval(intervalIdRef.current);
+      console.log("Interval stopped. No further ticks should happen.");
+      intervalIdRef.current = null;
     }
   };
 
+  const resetTimer = () => {
+    stopTimer();
+    setElapsedTime(0);
+  };
+
+
+  useEffect(() => {
+    return () => {
+      if (intervalIdRef.current) {
+        console.log("Cleaning up interval on unmount");
+        clearInterval(intervalIdRef.current);
+        intervalIdRef.current = null;
+      }
+    };
+  }, []);
+
+
+
   const evaluateOutOfRangeState = () => {
-    const updatedOutOfRangeState = {};
+    setOutOfRangeState(prevState => {
+      console.log("prevState is:", prevState); // 👈 See what React actually passes
+      const newState = { ...prevState }; // Start from existing out-of-range marks
 
-    Object.keys(currentValues).forEach((key) => {
-      const value = currentValues[key]?.data;
+      Object.keys(currentValues).forEach((key) => {
+        const value = currentValues[key]?.data;
+        if (value !== undefined) {
+          let border;
+          if (isMachineTypeSelected) {
+            border = machineTypeBorders[key] || defaultBorders[key];
+          } else {
+            border = defaultBorders[key];
+          }
 
-      if (value !== undefined) {
-        let border;
-        if (isMachineTypeSelected) {
-          border = machineTypeBorders[key] || defaultBorders[key];
-        } else {
-          border = defaultBorders[key];
-        }
+          if (border) {
+            const shouldCompare =
+              key === "ELECTRICAL_EFFICIENCY" || key === "THERMAL_EFFICIENCY" || key === "OVERALL_EFFICIENCY" ? elapsedTime >= 20 * 60 : true;
+            if (shouldCompare) {
+              const { min, max } = border;
+              const minOut = min !== undefined && value < min;
+              const maxOut = max !== undefined && value > max;
 
-        if (border) {
-          const shouldCompare =
-            key === "ELEKTRISCHER_WIRKUNGSGRAD" ? elapsedTime >= 15 * 60 : true;
-
-          if (shouldCompare) {
-            const { min, max } = border;
-            const minOut = min !== undefined && value < min;
-            const maxOut = max !== undefined && value > max;
-            if (minOut || maxOut) {
-              updatedOutOfRangeState[key] = {
-                min: minOut,
-                max: maxOut,
-              };
+              // Only add to newState if value is out of range and key not already present
+              if ((minOut || maxOut) && !newState[key]) {
+                newState[key] = {
+                  min: minOut,
+                  max: maxOut,
+                };
+              }
             }
           }
         }
-      }
-    });
+      });
 
-    setOutOfRangeState(updatedOutOfRangeState);
+      return newState; // Preserve previous keys, add new ones only
+    });
   };
+
 
   useEffect(() => {
     if (Object.keys(firstValues).length > 0) {
       evaluateOutOfRangeState();
     }
-  }, [firstValues]);
+  }, [currentValues]);
+
 
   useEffect(() => {
-    if (!message || !Array.isArray(message)) return;
+    if (!message) return;
+    console.log("🟡 Incoming WebSocket batch:", message);
 
-    const stopMessage = message.find((item) => item.stopPolling);
+    const batch = Array.isArray(message) ? message : [message];
 
-    if (stopMessage && stopMessage.endTime) {
-      // Calculate the elapsed time using the backend-provided start time and end time
-      const backendEndTime = stopMessage.endTime;
-      const backendStartTime = stopMessage.startTime;
-      const elapsedTime = Math.floor(
-        (backendEndTime - backendStartTime) / 1000
-      ); // In seconds
-      console.log("Elapsed Time (seconds):", elapsedTime);
+    const {
+      initialDataFound,
+      startTimeFound,
+      lastDataFound,
+      endTimeFound
+    } = extractTimestampsFromBatch(batch);
 
-      setElapsedTime(elapsedTime); // Save the elapsed time in state (for UI)
 
-      // You can also save this information to the backend or do further processing
-      // sendElapsedTimeToBackend(backendStartTime, backendEndTime, elapsedTime);
+    updateDifferencesFromBatch(batch);
+    updateCurrentValuesFromBatch(batch);
+
+
+    if (initialDataFound) setFirstValues(initialDataFound);
+
+    if (lastDataFound && Object.keys(lastDataFound).length > 0) {
+      setLastValues(lastDataFound);
+      toast.success("Messung beendet");
     }
 
-    setCurrentValues((prevValues) => {
-      const updatedData = { ...prevValues };
 
-      message.forEach((item) => {
-        // Handle ERZEUGTE_ENERGIE
-        if (
-          item.difference === "ERZEUGTE_ENERGIE" &&
-          Object.prototype.hasOwnProperty.call(item, "ERZEUGTE_ENERGIE") &&
-          firstValues["ERZEUGTE_ENERGIE"] !== undefined
-        ) {
-          const difference = item["ERZEUGTE_ENERGIE"];
-          setDifference((prevDifference) => ({
-            ...prevDifference,
-            ERZEUGTE_ENERGIE: difference,
-          }));
-        }
+    if (startTimeFound) {
+      setBackendStartTime(startTimeFound);
+      console.log(`Start time found : startTimeFound seconds`);
+      startTimer(startTimeFound);
+    }
 
-        // Handle ERZEUGTE_ENERGIE_HEATING
-        if (
-          item.difference === "ERZEUGTE_ENERGIE_HEATING" &&
-          Object.prototype.hasOwnProperty.call(
-            item,
-            "ERZEUGTE_ENERGIE_HEATING"
-          ) &&
-          firstValues["ERZEUGTE_ENERGIE_HEATING"] !== undefined
-        ) {
-          const difference = item["ERZEUGTE_ENERGIE_HEATING"];
-          setDifference((prevDifference) => ({
-            ...prevDifference,
-            ERZEUGTE_ENERGIE_HEATING: difference,
-          }));
-        }
+    if (endTimeFound) {
+      const finalElapsed = Math.floor((endTimeFound - backendStartTime) / 1000);
+      setElapsedTime(finalElapsed); // ✅ Ensure accurate final time in UI
+      stopTimer();
+      setIsRunning(false);
+      setStopped(true);
+      //setIsMachineTypeSelected(false);
+    }
 
-        // Handle GAS_METER
-        if (
-          item["difference"] === "GAS_ZAHLER" &&
-          item["GAS_ZAHLER"] !== undefined
-        ) {
-          const newGasMeterDifference = item["GAS_ZAHLER"];
-          setGasMeterDifference((prevDifference) => ({
-            ...prevDifference,
-            GAS_ZAHLER: newGasMeterDifference,
-          }));
-          console.log("Updated GAS_METER_difference:", newGasMeterDifference);
-        }
-
-        Object.keys(item).forEach((key) => {
-          // item is single message key (difference)
-          if (key !== "deviceId" && key !== "difference") {
-            if (!item.difference) {
-              const newValue = item[key];
-
-              console.log("Incoming key:", key, "with value:", item[key]);
-
-              updatedData[key] = { data: newValue };
-            }
-          }
-        });
-      });
-
-      return updatedData;
-    });
   }, [message]);
 
+
+
+
+  function extractTimestampsFromBatch(batch) {
+    let initialDataFound = null;
+    let startTimeFound = null;
+    let lastDataFound = null;
+    let endTimeFound = null;
+
+    batch.forEach(item => {
+
+
+      if (!initialDataFound && item.initialData) {
+        initialDataFound = item.initialData;
+        console.log('Setting firstValues from handleStartTask', initialDataFound);
+      }
+
+
+      if (!startTimeFound && item.startTime) startTimeFound = item.startTime;
+      if (!lastDataFound && item.lastData) lastDataFound = item.lastData;
+      if (!endTimeFound && item.endTime) endTimeFound = item.endTime;
+    });
+
+    return { initialDataFound, startTimeFound, lastDataFound, endTimeFound };
+  }
+
+
+  function updateDifferencesFromBatch(batch) {
+    batch.forEach(item => {
+      const { difference } = item;
+
+      if (difference === "GENERATED_ENERGY" && item.GENERATED_ENERGY !== undefined && firstValues["GENERATED_ENERGY"] !== undefined) {
+        setDifference(prev => ({
+          ...prev,
+          GENERATED_ENERGY: item.GENERATED_ENERGY
+        }));
+      }
+
+      if (difference === "GENERATED_ENERGY_HEATING" && item.GENERATED_ENERGY_HEATING !== undefined && firstValues["GENERATED_ENERGY_HEATING"] !== undefined) {
+        setDifference(prev => ({
+          ...prev,
+          GENERATED_ENERGY_HEATING: item.GENERATED_ENERGY_HEATING
+        }));
+      }
+
+      if (difference === "GAS_METER" && item.GAS_METER !== undefined) {
+        setGasMeterDifference(prev => ({
+          ...prev,
+          GAS_METER: item.GAS_METER
+        }));   
+      /*  if (!hasEvaluatedAfterFirstDiff) {
+          console.log("Received first GAS_METER difference");
+          setHasEvaluatedAfterFirstDiff(true);
+        }*/
+      }
+
+    });
+  }
+
+  function updateCurrentValuesFromBatch(batch) {
+    const updatedValues = {};
+    let hasChange = false;
+
+    batch.forEach(item => {//item - GENERATED_ENERGY ="362578.03"testStationId =1
+      Object.keys(item).forEach(key => {//key GENERATED_ENERGY
+        if (key !== "testStationId" &&
+          key !== "difference" &&
+          key !== "initialData" &&
+          key !== "lastData" &&
+          key !== "startTime" &&
+          key !== "endTime") {
+          if (!item.difference && item[key] !== undefined) {
+            const newVal = item[key]; // convert to number to normalize
+            const oldVal = previousValuesRef.current[key];
+
+            // If key not present before OR value changed, update
+            if (oldVal === undefined || oldVal !== newVal) {
+              console.log(`🔄 Updating key: ${key} | Old: ${oldVal} → New: ${newVal}`);
+              previousValuesRef.current[key] = newVal;
+              updatedValues[key] = { data: newVal };
+              hasChange = true;
+            }
+          }
+        }
+      });
+    });
+
+    if (hasChange) {
+      setCurrentValues(prev => ({ ...prev, ...updatedValues }));
+    }
+  }
+
+
+
+  const durationOptions = [
+    { value: 60, label: "1 Stunde" },
+    { value: 90, label: "1.5 Stunde" },
+    { value: 120, label: "2 Stunde" },
+    { value: 180, label: "3 Stunde" },
+    { value: 240, label: "4 Stunde" },
+    { value: 300, label: "5 Stunde" },
+  ];
+
+
+
+  const handleAutoStopMinutes = (event) => {
+    setAutoStopMinutes(Number(event.target.value));
+  };
+
+
+
   const handleStartTask = async () => {
-    if (selectedDevice && isButtonDisabled) {
+    if (!selectedDevice || !isButtonDisabled || !isOpen) return; // double check logic here
+
+    try {
+      await setAutoStopDuration(Number(autoStopMinutes)); // <- trigger your endpoint here
+      toast.success(`Auto-Stopp auf ${autoStopMinutes} Minuten eingestellt`);
+
       setIsMachineTypeSelected(true);
       setIsRunning(true);
+      setIsReset(true); // Mark that Start was triggered
 
-      try {
-        const response = await startMeasure(selectedDevice, serienNummer);
-
-        const initialData = response.initialData;
-
-        const backendStartTime = response.startTime;
-
-        if (backendStartTime && initialData) {
-          setFirstValues(initialData);
-
-          // Calculate how many seconds have already passed
-          const initialElapsed = Math.floor(
-            (Date.now() - backendStartTime) / 1000
-          );
-          setElapsedTime(initialElapsed); // Immediately show correct time
-          startTimer(backendStartTime); // Begin ticking accurately
-        } else {
-          console.error("Invalid response. Timer will not start.");
-          setIsRunning(false);
-        }
-      } catch (error) {
-        console.error("Error starting measurement:", error);
-        setIsRunning(false);
-      }
+      await startMeasure(selectedDevice);
+    } catch (error) {
+      console.error("Error starting measurement:", error);
+      toast.error("Messung konnte nicht gestartet werden.");
+      setIsRunning(false);
     }
   };
+
+
 
   const handleStopTask = async () => {
-    if (selectedDevice) {
-      try {
-        const response = await stopMeasure(selectedDevice);
-        setLastValues(response.lastData);
-
-        // Assuming lastData contains startTime and endTime, use them to calculate the duration
-        const backendEndTime = response.endTime; // Get endTime from backend response
-        const backendStartTime = response.startTime; // Get startTime from backend response
-
-        if (backendStartTime && backendEndTime) {
-          const elapsedTime = Math.floor(
-            (backendEndTime - backendStartTime) / 1000
-          ); // In seconds
-          console.log("Polling elapsed time:", elapsedTime);
-          setElapsedTime(elapsedTime);
-
-          // Optionally, send this elapsed time to the backend for logging or persistence
-          // sendElapsedTimeToBackend(backendStartTime, backendEndTime, elapsedTime);
-        }
-      } catch (error) {
-        console.error("Error stopping measurement:", error);
-      } finally {
-        setIsRunning(false);
-        setStopped(true);
-        stopTimer(); // Stop the timer
-        setIsMachineTypeSelected(false);
-
-        if (socket.readyState === WebSocket.OPEN) {
-          // WebSocket.OPEN 1 The connection is open and ready to communicate.
-          console.log(
-            "Before closing: WebSocket is open (readyState: " +
-              socket.readyState +
-              ")"
-          );
-          socket.close();
-          console.log(
-            "After closing: WebSocket is now closed (readyState: " +
-              socket.readyState +
-              ")"
-          );
-        } else {
-          console.log(
-            "WebSocket is not open. Current readyState: " + socket.readyState
-          );
-        }
-      }
+    if (!selectedDevice) return;
+    try {
+      await stopMeasure(selectedDevice);  // just trigger stop, no need to parse response
+    } catch (error) {
+      console.error("Error stopping measurement:", error);
+      toast.error("Messung konnte nicht gestoppt werden. Bitte versuchen Sie es erneut.");
+    } finally {
+      setIsRunning(false);
+      setStopped(true);
+      stopTimer();
+      
+      //setIsMachineTypeSelected(false);
     }
   };
 
+
+
   const handleReset = () => {
-    setIsRunning(false); // Stop the task if it's running
-    setStopped(false); // Reset the stopped state
+    setIsRunning(false);  // Stop the task if it's running
+    setStopped(true);  // Reset the stopped state
     // Reset selected values to defaults
-    setSelectedDevice(null); // Clear selected device
-    setSelectedMachineType(""); // Clear selected machine type
+    setSelectedDevice(null);  // Clear selected device
+    setSelectedMachineType('');  // Clear selected machine type
 
     // Reset other values as needed
     setFirstValues({});
@@ -396,25 +456,32 @@ const useDeviceMonitor = () => {
     setDifference({});
     setMachineTypeBorders({});
     setGasMeterDifference({});
-    setIsRunning(false); // Mark task as stopped
+    setIsReset(false); // Reset this as well
 
-    stopTimer(); // Stop the timer if needed
+    stopTimer();  // Stop the timer if needed
     resetTimer();
 
     setOutOfRangeState({});
     setIsMachineTypeSelected(false);
     setDefaultBorders({});
-    setSerienNummer(""); // Clear the Seriennummer
-    setIsButtonDisabled(false); // Enable the Check Status button
-    setOnStopPolling(false);
+    setSerialNumber("");  // Clear the Seriennummer
+    setIsButtonDisabled(false);  // Enable the Check Status button
+
+    // **Reset backend start/end times!**
+    setBackendStartTime(null);
+    setAutoStopMinutes(120); // reset to default
+    previousValuesRef.current = {};
 
     if (socket) {
+      console.log("socket is :", socket);
       socket.close(); // Close WebSocket connection if open
     }
+
   };
 
+
   return {
-    devices,
+    testStations,
     selectedDevice,
     socket,
     message,
@@ -446,7 +513,7 @@ const useDeviceMonitor = () => {
     defaultBorders,
     setDefaultBorders,
     handleInputChange,
-    serienNummer,
+    serialNumber,
     productStatus,
     fetchStatus,
     isButtonDisabled,
@@ -454,11 +521,25 @@ const useDeviceMonitor = () => {
     startTimer,
     stopTimer,
     elapsedTime,
-    onStopPolling,
-    setOnStopPolling,
-    ubertragenData,
+    intervalIdRef,
+
+
+
+
+    submit,
     handleUbertragen,
+    isReset,
+    hasEvaluatedAfterFirstDiff,
+    autoStopMinutes,
+    handleAutoStopMinutes,
+    durationOptions
+
+
   };
 };
 
 export { useDeviceMonitor };
+
+
+
+
