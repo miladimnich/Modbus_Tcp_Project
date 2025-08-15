@@ -131,19 +131,19 @@ public class TestStationConfig {
 
 
             // Create ModbusDevice (or Adapter) instances
-            ModbusDevice device1 = new ModbusDevice("192.168.125.56", 502,
+            ModbusDevice device1 = new ModbusDevice("192.168.xxx.x7", 502,
                     Arrays.asList(energy1, heating1));
-            ModbusDevice device2 = new ModbusDevice("192.168.125.56", 502,
+            ModbusDevice device2 = new ModbusDevice("192.168.xxx.x7", 502,
                     Arrays.asList(energy2, heating2));
-            ModbusDevice device3 = new ModbusDevice("192.168.125.56", 502,
+            ModbusDevice device3 = new ModbusDevice("192.168.xxx.x7", 502,
                     Arrays.asList(energy3, heating3));
-            ModbusDevice device4 = new ModbusDevice("192.168.125.61", 502,
+            ModbusDevice device4 = new ModbusDevice("192.168.xxx.x8", 502,
                     List.of(gasTemperature1));
-            ModbusDevice device5 = new ModbusDevice("192.168.125.61", 502,
+            ModbusDevice device5 = new ModbusDevice("192.168.xxx.x8", 502,
                     List.of(gasTemperature2));
-            ModbusDevice device6 = new ModbusDevice("192.168.125.61", 502,
+            ModbusDevice device6 = new ModbusDevice("192.168.xxx.x8", 502,
                     List.of(gasTemperature3));
-            ModbusDevice device7 = new ModbusDevice("192.168.125.65", 502,
+            ModbusDevice device7 = new ModbusDevice("192.168.xxx.x9", 502,
                     Arrays.asList(chp1, chp2));
 
 

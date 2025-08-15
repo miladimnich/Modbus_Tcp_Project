@@ -122,7 +122,9 @@ public class WebSocketHandlerCustom extends TextWebSocketHandler {
                     log.debug("Attempting to serialize dataBatch for session {}: {}", session.getId(), dataBatch);
                     String messagePayload = objectMapper.writeValueAsString(dataBatch);
                     log.debug("Serialized payload for session {}: {}", session.getId(), messagePayload);
-                    session.sendMessage(new TextMessage(messagePayload));
+                    synchronized (session) {
+                        session.sendMessage(new TextMessage(messagePayload));
+                    }
                     log.debug("Sent message to session {}", session.getId());
                 } catch (IllegalStateException | IOException e) {
                     log.warn("Error sending message to session {}: {}", session.getId(), e.getMessage());
