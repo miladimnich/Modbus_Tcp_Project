@@ -24,7 +24,7 @@ function App() {
 
   return (
     <div className="title-container">
-      <h1 className="title">Energiewerkstatt-Prüfstandsabnahme</h1>
+      <h1 className="title">Prüfstandsabnahme</h1>
 
       <div className="top-section">
         <div className="device-selector field-group">
